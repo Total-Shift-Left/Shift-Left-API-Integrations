@@ -1,0 +1,49 @@
+# Optional: create a pipeline in Azure DevOps with this file as the YAML source path
+# to run tests and build the ShiftLeft extension VSIX on each change.
+name: shiftleft-ado-extension-$(Date:yyyyMMdd)$(Rev:.r)
+
+trigger:
+  branches:
+    include:
+      - master
+      - main
+  paths:
+    include:
+      - azure-devops-shiftleft-extension/*
+
+pool:
+  vmImage: ubuntu-latest
+
+steps:
+  - task: NodeTool@0
+    inputs:
+      versionSpec: '20.x'
+    displayName: Use Node 20
+
+  - script: |
+      cd azure-devops-shiftleft-extension/shiftleft-api-integration-task
+      npm ci
+      npm run generate-extension-icon
+      npm test
+    displayName: npm test + icon generation (ShiftLeft task)
+
+  - script: |
+      cd azure-devops-shiftleft-extension/shiftleft-api-integration-task
+      rm -rf node_modules
+      npm ci --omit=dev
+    displayName: Production npm ci for packaging
+
+  - script: npm install -g tfx-cli
+    displayName: Install tfx-cli
+
+  - script: |
+      cd azure-devops-shiftleft-extension
+      tfx extension create --manifest-globs vss-extension.json
+    displayName: tfx extension create
+
+  - task: PublishPipelineArtifact@1
+    inputs:
+      targetPath: 'azure-devops-shiftleft-extension'
+      artifact: 'shiftleft-ado-extension'
+      publishLocation: 'pipeline'
+    displayName: Publish folder (contains .vsix)

@@ -1,0 +1,10 @@
+<?jelly escape-by-default='true'?>
+<div>
+  <p>
+    <b>Shift-Left API Automation Integration</b> (Jenkins plugin by Total Shift Left).
+  </p>
+  <p>
+    Adds a Freestyle build step to authenticate to your Shift-Left API backend, trigger a Test Pack run via
+    <code>/api/v1</code>, poll for completion, and gate the build based on results.
+  </p>
+</div>

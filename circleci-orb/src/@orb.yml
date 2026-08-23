@@ -1,0 +1,14 @@
+version: 2.1
+
+description: >
+  Run Shift-Left Studio (totalshiftleft.ai) API test packs from CircleCI.
+  Triggers a test run pack over the public API, waits for that specific run to finish,
+  applies a pass-rate quality gate, and writes a JSON summary plus JUnit XML that
+  CircleCI can publish as artifacts and test results.
+  Every step wraps the shared runner @totalshiftleft/ci, so this orb behaves identically
+  to the GitHub Action, the Azure DevOps task, the Bitbucket pipe and the GitLab component.
+
+display:
+  home_url: https://totalshiftleft.ai
+# `source_url` is intentionally omitted: there is no public source mirror for the orb yet.
+# Add it here before publishing a production version to the public registry.

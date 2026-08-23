@@ -1,0 +1,15 @@
+node_modules/
+*.log
+.DS_Store
+Thumbs.db
+.env
+.env.*
+coverage/
+
+# Build output. Note the deliberate exception below.
+target/
+*.tgz
+
+# github-actions/dist MUST be committed: GitHub runs the bundle directly with no
+# install step, so an uncommitted dist means the action fails for every consumer
+# with "Cannot find module". Do not add it here.

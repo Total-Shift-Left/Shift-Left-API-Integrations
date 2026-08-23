@@ -1,0 +1,43 @@
+{
+  "manifestVersion": 1,
+  "id": "shift-left-api-automation-integration",
+  "name": "Shift-Left API Automation Integration",
+  "version": "1.0.0",
+  "publisher": "totalshiftleft",
+  "description": "Run ShiftLeft API test packs from Azure Pipelines with quality gates, publishable test results, and support for governed, multi-tenant deployments.",
+  "public": true,
+  "targets": [
+    {
+      "id": "Microsoft.VisualStudio.Services"
+    }
+  ],
+  "categories": ["Azure Pipelines"],
+  "icons": {
+    "default": "images/extension-icon.png"
+  },
+  "files": [
+    {
+      "path": "shiftleft-api-integration-task"
+    },
+    {
+      "path": "images",
+      "addressable": true
+    }
+  ],
+  "contributions": [
+    {
+      "id": "shiftleft-api-integration-task",
+      "type": "ms.vss-distributed-task.task",
+      "targets": ["ms.vss-distributed-task.tasks"],
+      "properties": {
+        "name": "shiftleft-api-integration-task"
+      }
+    }
+  ],
+  "scopes": [],
+  "content": {
+    "details": {
+      "path": "overview.md"
+    }
+  }
+}

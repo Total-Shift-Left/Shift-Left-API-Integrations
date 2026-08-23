@@ -1,0 +1,43 @@
+{
+  "name": "@totalshiftleft/ci",
+  "version": "1.0.0",
+  "description": "Run Shift-Left Studio test packs from any CI system: trigger a test run pack, wait for it, apply a quality gate, and write JSON + JUnit artifacts.",
+  "main": "src/index.js",
+  "bin": {
+    "shiftleft-ci": "bin/shiftleft-ci.js"
+  },
+  "files": [
+    "src",
+    "bin",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "license": "MIT",
+  "keywords": [
+    "api-testing",
+    "ci",
+    "quality-gate",
+    "junit",
+    "totalshiftleft",
+    "shift-left"
+  ],
+  "scripts": {
+    "test": "jest",
+    "test:regression": "jest --ci"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "testMatch": [
+      "**/__tests__/**/*.test.js"
+    ],
+    "collectCoverageFrom": [
+      "src/**/*.js",
+      "!bin/**"
+    ]
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
+  }
+}

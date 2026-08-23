@@ -1,0 +1,179 @@
+# Shift-Left Studio — GitLab CI/CD Catalog component.
+#
+# Wraps @totalshiftleft/ci (the totalshiftleft/ci-runner image), the single implementation behind
+# every Total Shift Left CI integration. Nothing is reimplemented here.
+#
+# Boolean-looking inputs are declared as strings with `options` rather than `type: boolean`, so
+# the value interpolated into `variables:` is always the literal "true"/"false" string the runner
+# contract expects — `variables:` values must be strings.
+spec:
+  inputs:
+    server-url:
+      type: string
+      description: >-
+        Base URL of your Shift-Left Studio deployment, with no trailing slash
+        (e.g. https://tenant.totalshiftleft.ai).
+
+    pack-id:
+      type: string
+      description: ID of the test run pack to execute.
+
+    api-email-variable:
+      type: string
+      default: SHIFTLEFT_API_EMAIL
+      description: >-
+        Name of the CI/CD variable holding the API user's email. Passed by name, not by value.
+
+    api-password-variable:
+      type: string
+      default: SHIFTLEFT_API_PASSWORD
+      description: >-
+        Name of the CI/CD variable holding the API user's password. Passed by name, not by value.
+        Define it as a masked (and ideally protected) CI/CD variable; the runner never prints it.
+
+    tenant-id:
+      type: string
+      default: ""
+      description: Tenant ID for multi-tenant installs, sent as X-Tenant-ID.
+
+    wait-for-completion:
+      type: string
+      default: "true"
+      options: ["true", "false"]
+      description: Wait for the run to finish. "false" triggers and returns immediately.
+
+    poll-interval-seconds:
+      type: number
+      default: 10
+      description: How often to poll for status while waiting.
+
+    timeout-minutes:
+      type: number
+      default: 60
+      description: Give up waiting after this many minutes and fail the job.
+
+    pass-threshold-percent:
+      type: number
+      default: 100
+      description: Minimum pass rate (0-100) required for the gate. 0 disables the threshold check.
+
+    fail-on-error-tests:
+      type: string
+      default: "true"
+      options: ["true", "false"]
+      description: Fail the gate when any test finishes in ERROR, regardless of pass rate.
+
+    gate-failure-result:
+      type: string
+      default: "failed"
+      options: ["failed", "succeeded-with-issues"]
+      description: >-
+        What a failed gate does. "failed" fails the job; "succeeded-with-issues" only warns.
+
+    write-json-summary:
+      type: string
+      default: "true"
+      options: ["true", "false"]
+      description: Write a JSON summary of the run.
+
+    json-summary-path:
+      type: string
+      default: "shiftleft-test-pack-summary.json"
+      description: Path for the JSON summary, relative to the working directory.
+
+    write-test-results-xml:
+      type: string
+      default: "true"
+      options: ["true", "false"]
+      description: Write JUnit XML results for test reporters.
+
+    test-results-xml-path:
+      type: string
+      default: "shiftleft-test-pack-results.xml"
+      description: Path for the JUnit XML, relative to the working directory.
+
+    working-directory:
+      type: string
+      default: ""
+      description: >-
+        Where artifacts are written. Leave empty to use $CI_PROJECT_DIR, which is what GitLab
+        collects artifacts from.
+
+    job-name:
+      type: string
+      default: shiftleft-test-pack
+      description: Name of the generated job.
+
+    stage:
+      type: string
+      default: test
+      description: Stage the generated job runs in. It must exist in your pipeline.
+
+    image:
+      type: string
+      default: "totalshiftleft/ci-runner:1"
+      description: >-
+        Image for the job. The default carries the runner; any Node.js 20+ image also works, and
+        the script falls back to `npx -y @totalshiftleft/ci` there.
+
+    # Boolean here, unlike the SHIFTLEFT_* inputs above: `allow_failure` is a real GitLab
+    # keyword that wants a boolean, not a string passed through to the runner.
+    allow-failure:
+      type: boolean
+      default: false
+      description: Let the pipeline continue when the quality gate fails.
+---
+
+"$[[ inputs.job-name ]]":
+  stage: $[[ inputs.stage ]]
+  image:
+    name: $[[ inputs.image ]]
+    # The runner image sets an ENTRYPOINT; GitLab needs it cleared to run `script`.
+    entrypoint: [""]
+  allow_failure: $[[ inputs.allow-failure ]]
+  variables:
+    SHIFTLEFT_SERVER_URL: "$[[ inputs.server-url ]]"
+    SHIFTLEFT_TENANT_ID: "$[[ inputs.tenant-id ]]"
+    SHIFTLEFT_PACK_ID: "$[[ inputs.pack-id ]]"
+    SHIFTLEFT_WAIT_FOR_COMPLETION: "$[[ inputs.wait-for-completion ]]"
+    SHIFTLEFT_POLL_INTERVAL_SECONDS: "$[[ inputs.poll-interval-seconds ]]"
+    SHIFTLEFT_TIMEOUT_MINUTES: "$[[ inputs.timeout-minutes ]]"
+    SHIFTLEFT_PASS_THRESHOLD_PERCENT: "$[[ inputs.pass-threshold-percent ]]"
+    SHIFTLEFT_FAIL_ON_ERROR_TESTS: "$[[ inputs.fail-on-error-tests ]]"
+    SHIFTLEFT_GATE_FAILURE_RESULT: "$[[ inputs.gate-failure-result ]]"
+    SHIFTLEFT_WRITE_JSON_SUMMARY: "$[[ inputs.write-json-summary ]]"
+    SHIFTLEFT_JSON_SUMMARY_PATH: "$[[ inputs.json-summary-path ]]"
+    SHIFTLEFT_WRITE_TEST_RESULTS_XML: "$[[ inputs.write-test-results-xml ]]"
+    SHIFTLEFT_TEST_RESULTS_XML_PATH: "$[[ inputs.test-results-xml-path ]]"
+    SHIFTLEFT_WORKING_DIRECTORY: "$[[ inputs.working-directory ]]"
+  script:
+    - |
+      set -eu
+
+      # Credentials are read from the named CI/CD variables at run time, so no secret is written
+      # into .gitlab-ci.yml or into this component.
+      SHIFTLEFT_API_EMAIL="$(printenv '$[[ inputs.api-email-variable ]]' || true)"
+      SHIFTLEFT_API_PASSWORD="$(printenv '$[[ inputs.api-password-variable ]]' || true)"
+      export SHIFTLEFT_API_EMAIL SHIFTLEFT_API_PASSWORD
+
+      if [ -z "$SHIFTLEFT_API_EMAIL" ]; then
+        echo "[ShiftLeft] CI/CD variable $[[ inputs.api-email-variable ]] is not set." >&2
+        exit 1
+      fi
+      if [ -z "$SHIFTLEFT_API_PASSWORD" ]; then
+        echo "[ShiftLeft] CI/CD variable $[[ inputs.api-password-variable ]] is not set." >&2
+        exit 1
+      fi
+
+      if [ -x /opt/shiftleft/bin/shiftleft-ci.js ]; then
+        node /opt/shiftleft/bin/shiftleft-ci.js
+      else
+        npx -y @totalshiftleft/ci
+      fi
+  artifacts:
+    when: always
+    paths:
+      - "$[[ inputs.json-summary-path ]]"
+      - "$[[ inputs.test-results-xml-path ]]"
+    reports:
+      junit: "$[[ inputs.test-results-xml-path ]]"

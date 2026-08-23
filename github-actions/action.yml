@@ -1,0 +1,93 @@
+name: 'Total Shift Left API Tests'
+description: 'Run a Shift-Left Studio test pack, gate the build on its pass rate, and publish JSON + JUnit results.'
+author: 'Total Shift Left'
+
+branding:
+  icon: 'check-circle'
+  color: 'blue'
+
+inputs:
+  server-url:
+    description: 'Base URL of your Shift-Left Studio deployment, with no trailing slash (e.g. https://tenant.totalshiftleft.ai).'
+    required: true
+  api-email:
+    description: 'Email of the API user. Its role must be allowed on the public API. Pass from a secret.'
+    required: true
+  api-password:
+    description: 'Password for the API user. Pass from a secret.'
+    required: true
+  pack-id:
+    description: 'ID of the test run pack to execute.'
+    required: true
+  tenant-id:
+    description: 'Tenant ID for multi-tenant installs, sent as X-Tenant-ID. Leave empty for single-tenant.'
+    required: false
+    default: ''
+  wait-for-completion:
+    description: 'Wait for the run to finish. Set to false to trigger and continue.'
+    required: false
+    default: 'true'
+  poll-interval-seconds:
+    description: 'How often to poll for status while waiting.'
+    required: false
+    default: '10'
+  timeout-minutes:
+    description: 'Give up waiting after this many minutes and fail the step.'
+    required: false
+    default: '60'
+  pass-threshold-percent:
+    description: 'Minimum pass rate (0-100) required for the gate. 0 disables the threshold check.'
+    required: false
+    default: '100'
+  fail-on-error-tests:
+    description: 'Fail the gate when any test finishes in ERROR, regardless of pass rate.'
+    required: false
+    default: 'true'
+  gate-failure-result:
+    description: 'What a failed gate does: "failed" fails the step, "succeeded-with-issues" only warns.'
+    required: false
+    default: 'failed'
+  write-json-summary:
+    description: 'Write a JSON summary of the run.'
+    required: false
+    default: 'true'
+  json-summary-path:
+    description: 'Path for the JSON summary, relative to the working directory.'
+    required: false
+    default: 'shiftleft-test-pack-summary.json'
+  write-test-results-xml:
+    description: 'Write JUnit XML results for test reporters.'
+    required: false
+    default: 'true'
+  test-results-xml-path:
+    description: 'Path for the JUnit XML, relative to the working directory.'
+    required: false
+    default: 'shiftleft-test-pack-results.xml'
+  working-directory:
+    description: 'Where artifacts are written. Defaults to GITHUB_WORKSPACE.'
+    required: false
+    default: ''
+
+# Set at runtime by the action. Names match the outputs the shared runner emits, so they are
+# identical across every Total Shift Left CI integration.
+outputs:
+  execution_id:
+    description: 'ID of the execution that was graded. Empty if the run never started.'
+  trigger_execution_id:
+    description: 'Receipt id returned by the trigger call. Not a lookup key — use execution_id.'
+  decision:
+    description: 'Gate decision: PASSED, GATE_FAIL_THRESHOLD, GATE_FAIL_ERROR_TESTS, FAILED, COMPLETED_WITH_ISSUES, OK, TIMEOUT or TRIGGER_ONLY.'
+  success_rate:
+    description: 'Pass rate of the graded execution, as a percentage.'
+  passed:
+    description: '"true" when the quality gate passed.'
+  task_completion:
+    description: 'succeeded, succeededWithIssues or failed.'
+  json_summary_path:
+    description: 'Absolute path to the JSON summary that was written.'
+  test_results_xml_path:
+    description: 'Absolute path to the JUnit XML that was written.'
+
+runs:
+  using: 'node20'
+  main: 'dist/index.js'

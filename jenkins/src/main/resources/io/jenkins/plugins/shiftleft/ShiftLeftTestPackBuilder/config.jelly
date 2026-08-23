@@ -1,0 +1,141 @@
+<?jelly escape-by-default='true'?>
+<j:jelly xmlns:j="jelly:core" xmlns:f="/lib/form">
+  <style>
+    .shiftleft-config-section {
+      margin-bottom: 20px;
+    }
+    .shiftleft-help-text {
+      color: #666;
+      font-size: 11px;
+      margin-top: 4px;
+      font-style: italic;
+    }
+    .shiftleft-section-header {
+      font-size: 14px;
+      font-weight: 600;
+      color: #4a4a4a;
+      margin-bottom: 10px;
+      padding-bottom: 5px;
+      border-bottom: 2px solid #d0d0d0;
+    }
+  </style>
+
+  <f:section title="Shift-Left API connection">
+    <f:entry title="Server URL" field="serverUrl" description="Base URL of the Shift-Left API server (e.g., http://app.totalshiftleft.ai)">
+      <f:textbox />
+      <div class="shiftleft-help-text">
+        Enter the base URL of your Shift-Left API server. Include the protocol (http:// or https://) but omit trailing slashes.
+      </div>
+    </f:entry>
+
+    <f:entry title="Tenant ID (optional)" field="tenantId" description="Tenant identifier for multi-tenant deployments">
+      <f:textbox />
+      <div class="shiftleft-help-text">
+        Optional: Specify a tenant ID if your Shift-Left instance uses multi-tenant architecture. Leave empty for default tenant.
+      </div>
+    </f:entry>
+
+    <f:entry title="Credentials" field="credentialsId" fillDependsOn="serverUrl" description="Jenkins credentials containing username/password for API authentication">
+      <f:select />
+      <div class="shiftleft-help-text">
+        Select credentials from Jenkins Credential Manager. Must be of type "Username with password". The username should be your email and password your API password.
+      </div>
+    </f:entry>
+
+    <f:entry title="Test connection">
+      <f:validateButton
+        title="Test Connection"
+        progress="Testing connection..."
+        method="testConnection"
+        with="serverUrl,tenantId,credentialsId"/>
+      <div class="shiftleft-help-text">
+        Click to verify the connection settings and credentials. This will attempt to authenticate with the Shift-Left API.
+      </div>
+    </f:entry>
+  </f:section>
+
+  <f:section title="Test Pack">
+    <f:entry title="Pack ID" field="packId" fillDependsOn="serverUrl,tenantId,credentialsId" description="Select the test pack to execute">
+      <f:select />
+      <div class="shiftleft-help-text">
+        Select a test pack from the dropdown. The list is populated from your Shift-Left server based on the configured connection. If no packs appear, verify your Server URL and Credentials are correct and click "Test Connection".
+      </div>
+    </f:entry>
+  </f:section>
+
+  <f:section title="Execution">
+    <f:entry title="Wait for completion" field="waitForCompletion" description="Wait for test pack execution to complete before marking build as finished">
+      <f:checkbox default="true"/>
+      <div class="shiftleft-help-text">
+        If enabled, the build will wait for the test pack to complete and fetch final results. If disabled, the build will only trigger the test pack and return immediately.
+      </div>
+    </f:entry>
+
+    <f:entry title="Poll interval (seconds)" field="pollIntervalSeconds" description="How often to check test pack status (in seconds)">
+      <f:number default="10" />
+      <div class="shiftleft-help-text">
+        Interval between status checks when waiting for completion. Default: 10 seconds. Lower values check more frequently but increase API load.
+      </div>
+    </f:entry>
+
+    <f:entry title="Overall timeout (minutes)" field="timeoutMinutes" description="Maximum time to wait for test pack completion">
+      <f:number default="60" />
+      <div class="shiftleft-help-text">
+        Maximum time to wait for test pack execution to complete. If exceeded, the build will be marked as timeout. Default: 60 minutes.
+      </div>
+    </f:entry>
+  </f:section>
+
+  <f:section title="Quality Gate">
+    <f:entry title="Pass threshold (%)" field="passThresholdPercent" description="Minimum success rate percentage required to pass the quality gate">
+      <f:number default="0" />
+      <div class="shiftleft-help-text">
+        Minimum percentage of tests that must pass for the quality gate to pass. Set to 0 to disable threshold checking. Example: 80 means at least 80% of tests must pass.
+      </div>
+    </f:entry>
+
+    <f:entry title="Fail build when any ERROR tests" field="failOnErrorTests" description="Fail the build if any tests have ERROR status">
+      <f:checkbox />
+      <div class="shiftleft-help-text">
+        If enabled, the build will fail if any test has an ERROR status, regardless of the pass threshold. This helps catch critical test execution failures.
+      </div>
+    </f:entry>
+
+    <f:entry title="Build result on gate failure" field="gateFailureResult" description="How to mark the build when quality gate fails">
+      <f:select />
+      <div class="shiftleft-help-text">
+        Choose how to mark the build when the quality gate fails: FAILURE (red), UNSTABLE (yellow), or ABORTED. This only applies when "Wait for completion" is enabled.
+      </div>
+    </f:entry>
+  </f:section>
+
+  <f:section title="Artifacts (optional)">
+    <f:entry title="Write JSON summary" field="writeJsonSummary" description="Generate a JSON summary file with test pack execution details">
+      <f:checkbox />
+      <div class="shiftleft-help-text">
+        If enabled, a JSON file containing the test pack execution summary will be written to the workspace. Useful for downstream processing or reporting.
+      </div>
+    </f:entry>
+
+    <f:entry title="JSON summary path (workspace-relative)" field="jsonSummaryPath" description="Path where the JSON summary file will be written">
+      <f:textbox default="shiftleft-test-pack-summary.json" />
+      <div class="shiftleft-help-text">
+        Relative path from the workspace root where the JSON summary will be written. Default: shiftleft-test-pack-summary.json
+      </div>
+    </f:entry>
+
+    <f:entry title="Write JUnit XML" field="writeJUnitXml" description="Generate a JUnit XML report for test results">
+      <f:checkbox />
+      <div class="shiftleft-help-text">
+        If enabled, a JUnit-compatible XML file will be generated. This allows Jenkins to parse test results and display them in the Test Results section. Requires "Wait for completion" to be enabled.
+      </div>
+    </f:entry>
+
+    <f:entry title="JUnit XML path (workspace-relative)" field="junitXmlPath" description="Path where the JUnit XML file will be written">
+      <f:textbox default="shiftleft-test-pack-results.xml" />
+      <div class="shiftleft-help-text">
+        Relative path from the workspace root where the JUnit XML will be written. Default: shiftleft-test-pack-results.xml. Configure this path in "Publish JUnit test result report" post-build action to display test results.
+      </div>
+    </f:entry>
+  </f:section>
+</j:jelly>

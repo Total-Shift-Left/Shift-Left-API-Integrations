@@ -1,0 +1,26 @@
+{
+  "name": "shift-left-api-integrations",
+  "version": "1.0.0",
+  "private": true,
+  "description": "CI/CD integrations for Shift-Left Studio: Jenkins, GitHub Actions, Azure DevOps, CircleCI, Bitbucket Pipelines, GitLab CI, and a generic runner for everything else.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Total-Shift-Left/Shift-Left-API-Integrations.git"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "workspaces": [
+    "ci-client",
+    "github-actions",
+    "azure-devops/shiftleft-api-integration-task"
+  ],
+  "scripts": {
+    "test": "npm run test --workspace=ci-client && npm run test --workspace=github-actions && npm run test --workspace=azure-devops/shiftleft-api-integration-task",
+    "build:action": "npm run build --workspace=github-actions"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
+  }
+}

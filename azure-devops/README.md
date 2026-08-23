@@ -1,77 +1,51 @@
-# Shift-Left API Automation Integration
+> ### ⚠️ The binary committed in this directory is out of date
+>
+> It was built before a correctness fix landed: the plugin could read the **previous** test run's
+> results and pass a build whose new run had not finished, so a pipeline goes green on stale data.
+> The source in this directory is fixed; the committed binary is not. Build from source, or wait
+> for the first tagged release, before relying on it in a pipeline.
 
-Azure DevOps extension that runs **ShiftLeft** API **test packs** in **Azure Pipelines**: authenticate, trigger a pack, wait for completion, apply **quality gates**, and optionally write **XML** (for **Publish Test Results**) and a **JSON** summary.
+# Shift-Left API Automation Integration — Azure DevOps extension
 
-**Publisher:** [totalshiftleft](https://marketplace.visualstudio.com/publishers/totalshiftleft)  
-**Marketplace:** [Shift-Left API Automation Integration](https://marketplace.visualstudio.com/items?itemName=totalshiftleft.shift-left-api-automation-integration)  
-**Support:** [support@totalshiftleft.com](mailto:support@totalshiftleft.com)
+Published on the **Visual Studio Marketplace** under **Total Shift Left** (publisher id: **`totalshiftleft`**, Commercial offering). Extension support: **support@totalshiftleft.com**.
 
-[![Install from Marketplace](https://img.shields.io/badge/Azure%20DevOps-Marketplace-blue)](https://marketplace.visualstudio.com/items?itemName=totalshiftleft.shift-left-api-automation-integration)
+Seller ID and Partner ID from Partner Center are account metadata only—they are **not** stored in `vss-extension.json`; sign in to [Partner Center](https://partner.microsoft.com/dashboard) with your publisher account to manage them.
 
----
+Adds an Azure Pipelines task to trigger **test run packs** on your ShiftLeft instance using the ShiftLeft **public API** (`/api/v1`): login, run, status poll, and detailed results. Optional header `X-Tenant-ID` when `tenantId` is set.
 
-## Install
+**Note:** In pipeline YAML, reference the task as **`totalshiftleft.shiftleft-api-integration-task@1`** (or the major version you installed).
 
-### From the Marketplace (recommended)
+## Prerequisites
 
-1. In Azure DevOps: **Organization settings** → **Extensions** → **Browse marketplace**.
-2. Search for **Shift-Left API Automation Integration** and install.
+- Node.js **20+** on the agent (task handler `Node20_1`).
+- Network access from the agent to your ShiftLeft server URL.
+- A user with permission to call the ShiftLeft CI/CD public API.
 
-Or open the listing directly: [Shift-Left API Automation Integration](https://marketplace.visualstudio.com/items?itemName=totalshiftleft.shift-left-api-automation-integration).
+## Credentials (v1)
 
-### From a downloaded `.vsix`
+Do **not** commit passwords. Recommended:
 
-If you prefer not to use the Marketplace (or your org requires a packaged file):
+1. Create a **variable group** (Pipelines → Library) with:
+   - `ShiftLeftEmail` — plain variable  
+   - `ShiftLeftPassword` — **secret**  
+2. Link the group to your pipeline and reference variables in the task inputs.
 
-1. Download the `.vsix` from this repository’s **Releases** page. Release assets follow this name pattern (semantic version **`major.minor.patch`**):
-
-   ```text
-   totalshiftleft.shift-left-api-automation-integration-<major>.<minor>.<patch>.vsix
-   ```
-
-   Example: `totalshiftleft.shift-left-api-automation-integration-1.0.0.vsix`.
-
-2. In Azure DevOps: **Organization settings** → **Extensions** → **Shared** → **Upload** and select the file.
-
-You need permission to manage extensions for the organization. Updates require uploading a newer `.vsix` when a new release is published.
-
----
-
-## Using the task in YAML
-
-Reference:
-
-```text
-totalshiftleft.shiftleft-api-integration-task@<major>
-```
-
-Use **`@1`** with a **1.x** extension version. Optional: `tenantId` and `X-Tenant-ID` for tenant-scoped ShiftLeft deployments.
-
-**Prerequisites:** Node.js **20+** on the agent, network access to your ShiftLeft URL, and a user allowed to call the ShiftLeft **CI/CD public API**.
-
----
-
-## Credentials
-
-Do **not** commit passwords in your **application** repo or paste them into YAML.
-
-Use a [variable group](https://learn.microsoft.com/en-us/azure/devops/pipelines/library/variable-groups) (e.g. `ShiftLeftEmail` + secret `ShiftLeftPassword`) or [secret pipeline variables](https://learn.microsoft.com/en-us/azure/devops/pipelines/process/variables#secret-variables), then reference `$(ShiftLeftEmail)` / `$(ShiftLeftPassword)` in the task.
-
----
+Alternatively, define **secret pipeline variables** in the UI or via YAML `variables`.
 
 ## YAML example
 
+After installing the extension, reference the task as **`totalshiftleft.shiftleft-api-integration-task@Major`** (publisher id from [`vss-extension.json`](vss-extension.json), task `name` from [`shiftleft-api-integration-task/task.json`](shiftleft-api-integration-task/task.json)).
+
 ```yaml
 variables:
-  - group: shiftleft-secrets   # ShiftLeftEmail, ShiftLeftPassword (secret)
+  - group: shiftleft-secrets   # contains ShiftLeftEmail, ShiftLeftPassword
 
 steps:
   - task: totalshiftleft.shiftleft-api-integration-task@1
-    name: ShiftLeft
-    displayName: Run ShiftLeft test pack
+    displayName: Run ShiftLeft pack
     inputs:
       serverUrl: 'https://your-shiftleft-host'
-      tenantId: ''                              # optional
+      tenantId: ''                    # optional
       apiEmail: '$(ShiftLeftEmail)'
       apiPassword: '$(ShiftLeftPassword)'
       packId: 'your_pack_id'
@@ -80,7 +54,7 @@ steps:
       timeoutMinutes: '60'
       passThresholdPercent: '100'
       failOnErrorTests: true
-      gateFailureResult: 'failed'               # or succeededWithIssues
+      gateFailureResult: 'failed'     # or succeededWithIssues
       writeJsonSummary: true
       jsonSummaryPath: 'shiftleft-test-pack-summary.json'
       writeTestResultsXml: true
@@ -105,42 +79,82 @@ steps:
       artifact: 'shiftleft-summary'
 ```
 
-### Required inputs
-
-| Input | Description |
-|-------|-------------|
-| `serverUrl` | ShiftLeft API base URL (no trailing slash). |
-| `apiEmail` | Login email for `/api/v1/login`. |
-| `apiPassword` | Login password (secret variable). |
-| `packId` | Test pack id to run. |
-
-Other options (poll interval, timeout, quality gate, output paths) have defaults or are visible in the pipeline task assistant.
-
 ### Output variables
 
-With `name: ShiftLeft` on the task:
+Give the task a `name:` (e.g. `ShiftLeft`) and read:
 
-| Macro | Meaning |
-|-------|---------|
-| `$(ShiftLeft.shiftLeftExecutionId)` | Execution id from status/results. |
-| `$(ShiftLeft.shiftLeftTriggerExecutionId)` | Id from the trigger response. |
-| `$(ShiftLeft.shiftLeftDecision)` | Gate decision (e.g. `PASSED`, `GATE_FAIL_THRESHOLD`, `TIMEOUT`). |
+- `$(ShiftLeft.shiftLeftExecutionId)` — execution id from status/results  
+- `$(ShiftLeft.shiftLeftTriggerExecutionId)` — id returned from the trigger response  
+- `$(ShiftLeft.shiftLeftDecision)` — gate code (`PASSED`, `GATE_FAIL_THRESHOLD`, `TIMEOUT`, etc.)
 
-### Quality gate vs pipeline result
+## Extension icon (Marketplace / organization extensions)
 
-| Azure DevOps result | When |
-|---------------------|------|
-| **Succeeded** | Gate passed as expected. |
-| **Failed** | Gate/run failed and `gateFailureResult` is `failed`. |
-| **Succeeded with issues** | `gateFailureResult` is `succeededWithIssues`, or completed-with-issues per task logic. |
+The manifest points to [`images/extension-icon.png`](images/extension-icon.png) (**128×128** PNG for Marketplace / extension details). The task folder also includes [`shiftleft-api-integration-task/icon.png`](shiftleft-api-integration-task/icon.png) (**32×32** for the pipeline task catalog). Both are generated from the Total Shift Left mark:
 
----
+- **Source SVG (dev-only, not packaged):** [`icon-source/total-shift-left-icon.svg`](icon-source/total-shift-left-icon.svg) — same artwork as [`frontend/logo/Icon/SVG/Total Shift Left Icon.svg`](../frontend/logo/Icon/SVG/Total%20Shift%20Left%20Icon.svg). **Do not put SVG under `images/`:** Azure DevOps / Marketplace validation rejects SVG files inside the VSIX; only PNG (or JPG) belongs in the packaged `images/` folder.
 
-## More help
+Flow-line artwork stays in [`frontend/public/`](../frontend/public/) (`tsl_flow*.svg`); it is not copied into this extension package.
 
-- [Total Shift Left — publisher](https://marketplace.visualstudio.com/publishers/totalshiftleft)
-- [Azure DevOps — Microsoft-hosted agents](https://learn.microsoft.com/en-us/azure/devops/pipelines/agents/hosted)
+After editing the SVG, regenerate the PNG (requires dev dependencies):
 
----
+```bash
+cd shiftleft-api-integration-task
+npm ci
+npm run generate-extension-icon
+```
 
-**Shift-Left API Automation Integration** is a commercial offering from **Total Shift Left**. For product and integration questions: **[support@totalshiftleft.com](mailto:support@totalshiftleft.com)**.
+Commit the updated `images/extension-icon.png` and `shiftleft-api-integration-task/icon.png` before packaging. The [`azure-pipelines.yml`](azure-pipelines.yml) CI job runs `generate-extension-icon` on Linux to verify the script (and Sharp) work on agents.
+
+## Build the `.vsix`
+
+From this directory (`azure-devops-shiftleft-extension/`):
+
+1. **Install production dependencies** for the task (so the VSIX includes `node_modules`):
+
+   ```bash
+   cd shiftleft-api-integration-task
+   npm ci --omit=dev
+   cd ..
+   ```
+
+2. **Install** [TFX CLI](https://github.com/microsoft/tfs-cli): `npm install -g tfx-cli`
+
+3. **Create the package** (run in folder that contains `vss-extension.json`):
+
+   ```bash
+   tfx extension create --manifest-globs vss-extension.json
+   ```
+
+   This produces a VSIX named like **`totalshiftleft.shift-left-api-automation-integration-{version}.vsix`** (from `publisher` + extension `id` in the manifest).
+
+4. Upload the `.vsix` in Azure DevOps: **Organization settings → Extensions → Shared → Upload**.
+
+### Before each release
+
+- Confirm `publisher` in [`vss-extension.json`](vss-extension.json) remains **`totalshiftleft`** (Total Shift Left).
+- Bump `version` in `vss-extension.json` and matching `version` in `shiftleft-api-integration-task/task.json`.
+- Upload or publish via `tfx extension publish` using credentials for the **totalshiftleft** publisher ([docs](https://learn.microsoft.com/en-us/azure/devops/extend/publish/overview)).
+
+## Develop & test
+
+```bash
+cd shiftleft-api-integration-task
+npm ci
+npm test
+```
+
+## CI pipeline for this folder
+
+See [`azure-pipelines.yml`](azure-pipelines.yml) — run tests and produce a VSIX artifact (optional: wire this file as a pipeline in your project).
+
+## Quality gate mapping
+
+How the task sets the Azure Pipelines step outcome:
+
+| Task result | Meaning |
+|-------------|---------|
+| **Succeeded** | Gate passed; run completed as expected. |
+| **Failed** | Gate or run failed; use when **gate failure result** is `failed` (input `gateFailureResult`). |
+| **Succeeded with issues** | Gate failed but you chose a non-blocking outcome; set **gate failure result** to `succeededWithIssues`. |
+
+Input **`gateFailureResult`** (`failed` vs `succeededWithIssues`) controls whether threshold or error-test failures mark the step as failed or as succeeded with issues. Other outcomes (for example completed-with-issues from the pack) still map to succeeded with issues when applicable.

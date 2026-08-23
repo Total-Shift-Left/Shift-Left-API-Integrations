@@ -1,3 +1,10 @@
+> ### ⚠️ The binary committed in this directory is out of date
+>
+> It was built before a correctness fix landed: the plugin could read the **previous** test run's
+> results and pass a build whose new run had not finished, so a pipeline goes green on stale data.
+> The source in this directory is fixed; the committed binary is not. Build from source, or wait
+> for the first tagged release, before relying on it in a pipeline.
+
 # Shift-Left API Automation Integration (Jenkins)
 
 Jenkins plugin by [Total Shift Left](https://www.totalshiftleft.ai) that runs **Shift-Left API Automation** test packs from **Freestyle** jobs. It uses your backend’s public API (`/api/v1`): login, trigger a test pack, optionally wait and poll for completion, apply a quality gate, and optionally write JSON or JUnit XML to the workspace.

@@ -1,0 +1,211 @@
+{
+  "$schema": "https://raw.githubusercontent.com/Microsoft/azure-pipelines-task-lib/master/tasks.schema.json",
+  "id": "8f3a2c1b-9d0e-4f5a-8b7c-1a2b3c4d5e6f",
+  "name": "shiftleft-api-integration-task",
+  "friendlyName": "Shift-Left API: Run test pack",
+  "description": "Run a ShiftLeft test pack through the public API, wait for completion, enforce quality gates, and write JSON and JUnit XML for Azure Pipelines.",
+  "helpMarkDown": "Configure your ShiftLeft **server URL**, **pack ID**, and API credentials. Store passwords in a **variable group** or secret pipeline variables—never commit them. Optional **tenant ID** when your deployment uses tenant-scoped API access. See the extension **Overview** on the Marketplace (or your organization’s extension details) for capabilities and a YAML example. Output variables: `shiftLeftExecutionId`, `shiftLeftTriggerExecutionId`, `shiftLeftDecision` (set a task `name` in YAML to reference them).",
+  "category": "Test",
+  "author": "Total Shift Left",
+  "version": {
+    "Major": 1,
+    "Minor": 0,
+    "Patch": 0
+  },
+  "preview": false,
+  "demands": [],
+  "minimumAgentVersion": "2.206.1",
+  "groups": [
+    {
+      "name": "connection",
+      "displayName": "ShiftLeft connection",
+      "isExpanded": true
+    },
+    {
+      "name": "execution",
+      "displayName": "Execution",
+      "isExpanded": true
+    },
+    {
+      "name": "qualityGate",
+      "displayName": "Quality gate",
+      "isExpanded": true
+    },
+    {
+      "name": "outputs",
+      "displayName": "File outputs",
+      "isExpanded": false
+    }
+  ],
+  "inputs": [
+    {
+      "name": "serverUrl",
+      "type": "string",
+      "label": "Server URL",
+      "defaultValue": "",
+      "required": true,
+      "helpMarkDown": "Base URL of the ShiftLeft API (e.g. `https://app.example.com`). No trailing slash.",
+      "groupName": "connection"
+    },
+    {
+      "name": "tenantId",
+      "type": "string",
+      "label": "Tenant ID (optional)",
+      "defaultValue": "",
+      "required": false,
+      "helpMarkDown": "Sent as `X-Tenant-ID` for multi-tenant deployments.",
+      "groupName": "connection"
+    },
+    {
+      "name": "apiEmail",
+      "type": "string",
+      "label": "API email (login)",
+      "defaultValue": "",
+      "required": true,
+      "helpMarkDown": "User email for `POST /api/v1/login`. Use `$(ShiftLeftEmail)` from a variable group to avoid storing in YAML.",
+      "groupName": "connection"
+    },
+    {
+      "name": "apiPassword",
+      "type": "string",
+      "label": "API password",
+      "defaultValue": "",
+      "required": true,
+      "helpMarkDown": "Password for login. Mark the pipeline variable as secret or use a secret variable group.",
+      "groupName": "connection"
+    },
+    {
+      "name": "packId",
+      "type": "string",
+      "label": "Pack ID",
+      "defaultValue": "",
+      "required": true,
+      "helpMarkDown": "Test run pack identifier (`packId` from the API).",
+      "groupName": "execution"
+    },
+    {
+      "name": "waitForCompletion",
+      "type": "boolean",
+      "label": "Wait for completion",
+      "defaultValue": "true",
+      "required": false,
+      "helpMarkDown": "If false, only triggers the run and exits successfully without polling.",
+      "groupName": "execution"
+    },
+    {
+      "name": "pollIntervalSeconds",
+      "type": "string",
+      "label": "Poll interval (seconds)",
+      "defaultValue": "10",
+      "required": false,
+      "helpMarkDown": "Interval between status polls when waiting.",
+      "groupName": "execution"
+    },
+    {
+      "name": "timeoutMinutes",
+      "type": "string",
+      "label": "Timeout (minutes)",
+      "defaultValue": "60",
+      "required": false,
+      "helpMarkDown": "Maximum time to wait for a terminal status.",
+      "groupName": "execution"
+    },
+    {
+      "name": "workingDirectory",
+      "type": "filePath",
+      "label": "Working directory for output files",
+      "defaultValue": "",
+      "required": false,
+      "helpMarkDown": "Directory for JSON and XML result files (defaults to `$(Build.SourcesDirectory)`).",
+      "groupName": "outputs"
+    },
+    {
+      "name": "passThresholdPercent",
+      "type": "string",
+      "label": "Pass threshold (%)",
+      "defaultValue": "100",
+      "required": false,
+      "helpMarkDown": "Minimum success rate percent. Use `0` to disable threshold and rely on status only.",
+      "groupName": "qualityGate"
+    },
+    {
+      "name": "failOnErrorTests",
+      "type": "boolean",
+      "label": "Fail on error tests",
+      "defaultValue": "true",
+      "required": false,
+      "helpMarkDown": "If true, any error-count > 0 fails the gate.",
+      "groupName": "qualityGate"
+    },
+    {
+      "name": "gateFailureResult",
+      "type": "pickList",
+      "label": "Gate failure as",
+      "defaultValue": "failed",
+      "required": false,
+      "options": {
+        "failed": "Failed (block pipeline)",
+        "succeededWithIssues": "Succeeded with issues"
+      },
+      "helpMarkDown": "How to treat quality-gate failures (maps to Jenkins FAILURE vs UNSTABLE).",
+      "groupName": "qualityGate"
+    },
+    {
+      "name": "writeJsonSummary",
+      "type": "boolean",
+      "label": "Write JSON summary",
+      "defaultValue": "true",
+      "required": false,
+      "helpMarkDown": "Write a summary JSON file to the working directory.",
+      "groupName": "outputs"
+    },
+    {
+      "name": "jsonSummaryPath",
+      "type": "string",
+      "label": "JSON summary path (relative)",
+      "defaultValue": "shiftleft-test-pack-summary.json",
+      "required": false,
+      "helpMarkDown": "Relative path under the working directory.",
+      "groupName": "outputs"
+    },
+    {
+      "name": "writeTestResultsXml",
+      "type": "boolean",
+      "label": "Write XML test results",
+      "defaultValue": "true",
+      "required": false,
+      "helpMarkDown": "Write XML test results for use with **Publish Test Results** (`PublishTestResults@2`). Requires wait for completion and a finished run.",
+      "groupName": "outputs"
+    },
+    {
+      "name": "testResultsXmlPath",
+      "type": "string",
+      "label": "XML results path (relative)",
+      "defaultValue": "shiftleft-test-pack-results.xml",
+      "required": false,
+      "helpMarkDown": "Relative path under the working directory.",
+      "groupName": "outputs"
+    }
+  ],
+  "instanceNameFormat": "ShiftLeft: $(packId)",
+  "execution": {
+    "Node20_1": {
+      "target": "index.js",
+      "argumentFormat": ""
+    }
+  },
+  "outputVariables": [
+    {
+      "name": "shiftLeftExecutionId",
+      "description": "Execution ID from status/results (may differ from trigger response)."
+    },
+    {
+      "name": "shiftLeftDecision",
+      "description": "Quality gate decision code (e.g. PASSED, GATE_FAIL_THRESHOLD)."
+    },
+    {
+      "name": "shiftLeftTriggerExecutionId",
+      "description": "Execution ID returned from the trigger call."
+    }
+  ]
+}

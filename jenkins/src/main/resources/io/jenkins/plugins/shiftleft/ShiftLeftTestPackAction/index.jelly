@@ -1,0 +1,460 @@
+<?jelly escape-by-default='true'?>
+<l:layout xmlns:l="/lib/layout" xmlns:j="jelly:core" title="Shift-Left API Automation Integration">
+  <l:main-panel>
+  <j:set var="s" value="${it.summary}"/>
+
+  <style>
+    .shiftleft-summary {
+      margin: 20px 0;
+    }
+    .shiftleft-section {
+      margin-bottom: 25px;
+      border: 1px solid #d0d0d0;
+      border-radius: 4px;
+      padding: 15px;
+      background: #f9f9f9;
+    }
+    .shiftleft-section h3 {
+      margin-top: 0;
+      margin-bottom: 15px;
+      color: #4a4a4a;
+      font-size: 16px;
+      font-weight: 600;
+      border-bottom: 2px solid #d0d0d0;
+      padding-bottom: 8px;
+    }
+    .shiftleft-status-badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-weight: 600;
+      font-size: 12px;
+      text-transform: uppercase;
+    }
+    .shiftleft-status-completed, .shiftleft-status-passed {
+      background-color: #4caf50;
+      color: white;
+    }
+    .shiftleft-status-failed {
+      background-color: #f44336;
+      color: white;
+    }
+    .shiftleft-status-running {
+      background-color: #ff9800;
+      color: white;
+    }
+    .shiftleft-status-timeout {
+      background-color: #ff9800;
+      color: white;
+    }
+    .shiftleft-decision-passed {
+      background-color: #4caf50;
+      color: white;
+      padding: 8px 16px;
+      border-radius: 4px;
+      font-weight: 600;
+      font-size: 14px;
+    }
+    .shiftleft-decision-failed {
+      background-color: #f44336;
+      color: white;
+      padding: 8px 16px;
+      border-radius: 4px;
+      font-weight: 600;
+      font-size: 14px;
+    }
+    .shiftleft-decision-timeout {
+      background-color: #ff9800;
+      color: white;
+      padding: 8px 16px;
+      border-radius: 4px;
+      font-weight: 600;
+      font-size: 14px;
+    }
+    .shiftleft-progress-bar {
+      width: 100%;
+      height: 24px;
+      background-color: #e0e0e0;
+      border-radius: 12px;
+      overflow: hidden;
+      margin: 8px 0;
+      position: relative;
+    }
+    .shiftleft-progress-fill {
+      height: 100%;
+      transition: width 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 600;
+      font-size: 12px;
+    }
+    .shiftleft-progress-success {
+      background-color: #4caf50;
+    }
+    .shiftleft-progress-warning {
+      background-color: #ff9800;
+    }
+    .shiftleft-progress-danger {
+      background-color: #f44336;
+    }
+    .shiftleft-test-badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 10px;
+      font-size: 11px;
+      font-weight: 600;
+      margin-right: 8px;
+    }
+    .shiftleft-badge-passed {
+      background-color: #4caf50;
+      color: white;
+    }
+    .shiftleft-badge-failed {
+      background-color: #f44336;
+      color: white;
+    }
+    .shiftleft-badge-error {
+      background-color: #d32f2f;
+      color: white;
+    }
+    .shiftleft-badge-total {
+      background-color: #2196f3;
+      color: white;
+    }
+    .shiftleft-info-row {
+      display: flex;
+      margin-bottom: 10px;
+      padding: 8px 0;
+      border-bottom: 1px solid #e0e0e0;
+    }
+    .shiftleft-info-label {
+      font-weight: 600;
+      color: #666;
+      min-width: 140px;
+      flex-shrink: 0;
+    }
+    .shiftleft-info-value {
+      color: #333;
+      flex: 1;
+    }
+    .shiftleft-quick-summary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 20px;
+      border-radius: 6px;
+      margin-bottom: 20px;
+    }
+    .shiftleft-quick-summary h2 {
+      margin: 0 0 15px 0;
+      color: white;
+      font-size: 20px;
+    }
+    .shiftleft-quick-stats {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+    .shiftleft-quick-stat {
+      flex: 1;
+      min-width: 120px;
+    }
+    .shiftleft-quick-stat-label {
+      font-size: 11px;
+      opacity: 0.9;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+    .shiftleft-quick-stat-value {
+      font-size: 24px;
+      font-weight: 700;
+    }
+    /* Jenkins global link styles override plain .color; keep label text readable on button background */
+    .shiftleft-summary a.shiftleft-artifact-link,
+    .shiftleft-summary a.shiftleft-artifact-link:link,
+    .shiftleft-summary a.shiftleft-artifact-link:visited {
+      display: inline-block;
+      padding: 6px 12px;
+      background-color: #2196f3;
+      color: #ffffff !important;
+      text-decoration: none !important;
+      border-radius: 4px;
+      margin-right: 8px;
+      margin-top: 4px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .shiftleft-summary a.shiftleft-artifact-link:hover,
+    .shiftleft-summary a.shiftleft-artifact-link:focus {
+      background-color: #1976d2;
+      color: #ffffff !important;
+      text-decoration: none !important;
+    }
+  </style>
+
+  <div class="shiftleft-summary">
+    <!-- Quick Summary Section -->
+    <div class="shiftleft-quick-summary">
+      <h2>Shift-Left API Automation Integration — Test pack results</h2>
+      <div class="shiftleft-quick-stats">
+        <div class="shiftleft-quick-stat">
+          <div class="shiftleft-quick-stat-label">Status</div>
+          <div class="shiftleft-quick-stat-value">
+            <j:choose>
+              <j:when test="${s.latestStatus != null}">
+                <span class="shiftleft-status-badge shiftleft-status-${s.latestStatus.toLowerCase()}">${s.latestStatus}</span>
+              </j:when>
+              <j:when test="${s.triggerStatus != null}">
+                <span class="shiftleft-status-badge shiftleft-status-${s.triggerStatus.toLowerCase()}">${s.triggerStatus}</span>
+              </j:when>
+              <j:otherwise>
+                <span class="shiftleft-status-badge shiftleft-status-running">Unknown</span>
+              </j:otherwise>
+            </j:choose>
+          </div>
+        </div>
+        <div class="shiftleft-quick-stat">
+          <div class="shiftleft-quick-stat-label">Decision</div>
+          <div class="shiftleft-quick-stat-value">
+            <j:choose>
+              <j:when test="${s.decision != null}">
+                <j:choose>
+                  <j:when test="${s.decision.equalsIgnoreCase('PASSED')}">
+                    <span class="shiftleft-decision-passed">${s.decision}</span>
+                  </j:when>
+                  <j:when test="${s.decision.equalsIgnoreCase('FAILED')}">
+                    <span class="shiftleft-decision-failed">${s.decision}</span>
+                  </j:when>
+                  <j:when test="${s.decision.equalsIgnoreCase('TIMEOUT')}">
+                    <span class="shiftleft-decision-timeout">${s.decision}</span>
+                  </j:when>
+                  <j:otherwise>
+                    <span class="shiftleft-decision-timeout">${s.decision}</span>
+                  </j:otherwise>
+                </j:choose>
+              </j:when>
+              <j:otherwise>
+                <span style="color: #ccc;">Not Available</span>
+              </j:otherwise>
+            </j:choose>
+          </div>
+        </div>
+        <div class="shiftleft-quick-stat">
+          <div class="shiftleft-quick-stat-label">Success Rate</div>
+          <div class="shiftleft-quick-stat-value">
+            <j:choose>
+              <j:when test="${s.total > 0}">
+                ${s.successRate}%
+              </j:when>
+              <j:otherwise>
+                N/A
+              </j:otherwise>
+            </j:choose>
+          </div>
+        </div>
+        <div class="shiftleft-quick-stat">
+          <div class="shiftleft-quick-stat-label">Total Tests</div>
+          <div class="shiftleft-quick-stat-value">${s.total}</div>
+        </div>
+      </div>
+      
+      <!-- Progress Bar -->
+      <j:if test="${s.total > 0}">
+        <div style="margin-top: 15px;">
+          <div class="shiftleft-progress-bar">
+            <j:set var="progressPercent" value="${s.successRate}"/>
+            <j:choose>
+              <j:when test="${progressPercent >= 90}">
+                <div class="shiftleft-progress-fill shiftleft-progress-success" style="width: ${progressPercent}%;">
+                  ${progressPercent}%
+                </div>
+              </j:when>
+              <j:when test="${progressPercent >= 70}">
+                <div class="shiftleft-progress-fill shiftleft-progress-warning" style="width: ${progressPercent}%;">
+                  ${progressPercent}%
+                </div>
+              </j:when>
+              <j:otherwise>
+                <div class="shiftleft-progress-fill shiftleft-progress-danger" style="width: ${progressPercent}%;">
+                  ${progressPercent}%
+                </div>
+              </j:otherwise>
+            </j:choose>
+          </div>
+        </div>
+      </j:if>
+    </div>
+
+    <!-- Connection Details Section -->
+    <div class="shiftleft-section">
+      <h3>Connection Details</h3>
+      <div class="shiftleft-info-row">
+        <div class="shiftleft-info-label">Server URL</div>
+        <div class="shiftleft-info-value">${s.serverUrl != null ? s.serverUrl : 'N/A'}</div>
+      </div>
+      <div class="shiftleft-info-row">
+        <div class="shiftleft-info-label">Tenant ID</div>
+        <div class="shiftleft-info-value">${s.tenantId != null ? s.tenantId : '(default)'}</div>
+      </div>
+      <div class="shiftleft-info-row">
+        <div class="shiftleft-info-label">Pack ID</div>
+        <div class="shiftleft-info-value"><code>${s.packId != null ? s.packId : 'N/A'}</code></div>
+      </div>
+    </div>
+
+    <!-- Execution Details Section -->
+    <div class="shiftleft-section">
+      <h3>Execution Details</h3>
+      <div class="shiftleft-info-row">
+        <div class="shiftleft-info-label">Execution ID</div>
+        <div class="shiftleft-info-value">
+          <j:choose>
+            <j:when test="${s.executionId != null}">
+              <code>${s.executionId}</code>
+            </j:when>
+            <j:when test="${s.triggerExecutionId != null}">
+              <code>${s.triggerExecutionId}</code> <span style="color: #999; font-size: 11px;">(trigger)</span>
+            </j:when>
+            <j:otherwise>
+              N/A
+            </j:otherwise>
+          </j:choose>
+        </div>
+      </div>
+      <div class="shiftleft-info-row">
+        <div class="shiftleft-info-label">Start Time</div>
+        <div class="shiftleft-info-value">
+          <j:choose>
+            <j:when test="${s.startTimeIso != null}">
+              ${s.startTimeIso}
+            </j:when>
+            <j:when test="${s.triggerStartTimeIso != null}">
+              ${s.triggerStartTimeIso}
+            </j:when>
+            <j:otherwise>
+              N/A
+            </j:otherwise>
+          </j:choose>
+        </div>
+      </div>
+      <div class="shiftleft-info-row">
+        <div class="shiftleft-info-label">End Time</div>
+        <div class="shiftleft-info-value">${s.endTimeIso != null ? s.endTimeIso : 'N/A'}</div>
+      </div>
+      <div class="shiftleft-info-row">
+        <div class="shiftleft-info-label">Status</div>
+        <div class="shiftleft-info-value">
+          <j:choose>
+            <j:when test="${s.latestStatus != null}">
+              <span class="shiftleft-status-badge shiftleft-status-${s.latestStatus.toLowerCase()}">${s.latestStatus}</span>
+            </j:when>
+            <j:when test="${s.triggerStatus != null}">
+              <span class="shiftleft-status-badge shiftleft-status-${s.triggerStatus.toLowerCase()}">${s.triggerStatus}</span>
+            </j:when>
+            <j:otherwise>
+              <span class="shiftleft-status-badge shiftleft-status-running">Unknown</span>
+            </j:otherwise>
+          </j:choose>
+        </div>
+      </div>
+    </div>
+
+    <!-- Test Results Section -->
+    <div class="shiftleft-section">
+      <h3>Test Results</h3>
+      <div style="margin-bottom: 15px;">
+        <span class="shiftleft-test-badge shiftleft-badge-total">Total: ${s.total}</span>
+        <span class="shiftleft-test-badge shiftleft-badge-passed">Passed: ${s.passed}</span>
+        <span class="shiftleft-test-badge shiftleft-badge-failed">Failed: ${s.failed}</span>
+        <j:if test="${s.error > 0}">
+          <span class="shiftleft-test-badge shiftleft-badge-error">Error: ${s.error}</span>
+        </j:if>
+      </div>
+      <div class="shiftleft-info-row">
+        <div class="shiftleft-info-label">Success Rate</div>
+        <div class="shiftleft-info-value">
+          <j:choose>
+            <j:when test="${s.total > 0}">
+              <strong>${s.successRate}%</strong>
+              <j:if test="${s.gatePassThresholdPercent > 0}">
+                <span style="color: #999; font-size: 11px;">(threshold: ${s.gatePassThresholdPercent}%)</span>
+              </j:if>
+            </j:when>
+            <j:otherwise>
+              N/A
+            </j:otherwise>
+          </j:choose>
+        </div>
+      </div>
+      <div class="shiftleft-info-row">
+        <div class="shiftleft-info-label">Results Count</div>
+        <div class="shiftleft-info-value">${s.resultsCount}</div>
+      </div>
+    </div>
+
+    <!-- Quality Gate Section -->
+    <j:if test="${s.decision != null}">
+      <div class="shiftleft-section">
+        <h3>Quality Gate</h3>
+        <div class="shiftleft-info-row">
+          <div class="shiftleft-info-label">Decision</div>
+          <div class="shiftleft-info-value">
+            <j:choose>
+              <j:when test="${s.decision.equalsIgnoreCase('PASSED')}">
+                <span class="shiftleft-decision-passed">${s.decision}</span>
+              </j:when>
+              <j:when test="${s.decision.equalsIgnoreCase('FAILED')}">
+                <span class="shiftleft-decision-failed">${s.decision}</span>
+              </j:when>
+              <j:when test="${s.decision.equalsIgnoreCase('TIMEOUT')}">
+                <span class="shiftleft-decision-timeout">${s.decision}</span>
+              </j:when>
+              <j:otherwise>
+                <span class="shiftleft-decision-timeout">${s.decision}</span>
+              </j:otherwise>
+            </j:choose>
+          </div>
+        </div>
+        <j:if test="${s.gatePassThresholdPercent > 0}">
+          <div class="shiftleft-info-row">
+            <div class="shiftleft-info-label">Pass Threshold</div>
+            <div class="shiftleft-info-value">${s.gatePassThresholdPercent}%</div>
+          </div>
+        </j:if>
+        <div class="shiftleft-info-row">
+          <div class="shiftleft-info-label">Fail on Error Tests</div>
+          <div class="shiftleft-info-value">${s.gateFailOnErrorTests ? 'Yes' : 'No'}</div>
+        </div>
+      </div>
+    </j:if>
+
+    <!-- Artifacts Section (job-level workspace URLs; paths match build step configuration) -->
+    <j:if test="${it.jsonSummaryBrowseUrl != null or it.junitXmlBrowseUrl != null}">
+    <div class="shiftleft-section">
+      <h3>Artifacts</h3>
+      <j:if test="${it.jsonSummaryBrowseUrl != null}">
+        <div class="shiftleft-info-row">
+          <div class="shiftleft-info-label">JSON Summary</div>
+          <div class="shiftleft-info-value">
+            <a href="${it.jsonSummaryBrowseUrl}" class="shiftleft-artifact-link" target="_blank">
+              View JSON Summary
+            </a>
+          </div>
+        </div>
+      </j:if>
+      <j:if test="${it.junitXmlBrowseUrl != null}">
+        <div class="shiftleft-info-row">
+          <div class="shiftleft-info-label">JUnit XML</div>
+          <div class="shiftleft-info-value">
+            <a href="${it.junitXmlBrowseUrl}" class="shiftleft-artifact-link" target="_blank">
+              View JUnit XML
+            </a>
+          </div>
+        </div>
+      </j:if>
+    </div>
+    </j:if>
+  </div>
+  </l:main-panel>
+</l:layout>

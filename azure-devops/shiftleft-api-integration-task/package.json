@@ -1,0 +1,33 @@
+{
+  "name": "shiftleft-api-integration-task",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Pipeline handler for Shift-Left API Automation Integration: run ShiftLeft test packs, apply quality gates, emit JSON and JUnit XML for Azure Pipelines.",
+  "main": "index.js",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "generate-extension-icon": "node scripts/generate-extension-icon.js",
+    "test:regression": "jest --ci"
+  },
+  "dependencies": {
+    "azure-pipelines-task-lib": "^5.0.0",
+    "@totalshiftleft/ci": "^1.0.0"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "sharp": "^0.33.5"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "coveragePathIgnorePatterns": [
+      "/node_modules/"
+    ],
+    "testMatch": [
+      "**/__tests__/**/*.test.js"
+    ]
+  }
+}

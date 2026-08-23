@@ -1,0 +1,156 @@
+description: >
+  Trigger a Shift-Left Studio test run pack, wait for that run to finish, apply the quality
+  gate and write the JSON summary and JUnit XML artifacts.
+
+  Runs `npx -y @totalshiftleft/ci` with the SHIFTLEFT_* environment contract, so it needs an
+  executor with Node.js 20+ available (cimg/base, cimg/node, or any image with npx).
+
+  Credentials are read from environment variables by name (project or context variables) and
+  are never inlined into your config.
+
+parameters:
+  server-url:
+    type: string
+    description: >
+      Base URL of your Shift-Left Studio deployment, with no trailing slash
+      (e.g. https://tenant.totalshiftleft.ai).
+
+  pack-id:
+    type: string
+    description: ID of the test run pack to execute.
+
+  api-email:
+    type: env_var_name
+    default: SHIFTLEFT_API_EMAIL
+    description: >
+      Name of the environment variable holding the API user's email. Its role must be allowed
+      on the public API. Set the variable as a CircleCI project or context variable; only the
+      NAME appears in your config.
+
+  api-password:
+    type: env_var_name
+    default: SHIFTLEFT_API_PASSWORD
+    description: >
+      Name of the environment variable holding the API user's password. Set it as a CircleCI
+      project or context variable. Only the NAME appears in your config, and the value is never
+      printed by the runner.
+
+  tenant-id:
+    type: string
+    default: ""
+    description: >
+      Tenant ID for multi-tenant installs, sent as X-Tenant-ID. Leave empty for single-tenant.
+
+  wait-for-completion:
+    type: boolean
+    default: true
+    description: Wait for the run to finish. Set to false to trigger and continue.
+
+  poll-interval-seconds:
+    type: integer
+    default: 10
+    description: How often to poll for status while waiting.
+
+  timeout-minutes:
+    type: integer
+    default: 60
+    description: Give up waiting after this many minutes and fail the step.
+
+  pass-threshold-percent:
+    type: integer
+    default: 100
+    description: >
+      Minimum pass rate (0-100) required for the gate. 0 disables the threshold check.
+
+  fail-on-error-tests:
+    type: boolean
+    default: true
+    description: Fail the gate when any test finishes in ERROR, regardless of pass rate.
+
+  gate-failure-result:
+    type: enum
+    enum: ["failed", "succeeded-with-issues"]
+    default: "failed"
+    description: >
+      What a failed gate does. "failed" fails the step; "succeeded-with-issues" only warns.
+
+  write-json-summary:
+    type: boolean
+    default: true
+    description: Write a JSON summary of the run.
+
+  json-summary-path:
+    type: string
+    default: "shiftleft-test-pack-summary.json"
+    description: Path for the JSON summary, relative to the working directory.
+
+  write-test-results-xml:
+    type: boolean
+    default: true
+    description: Write JUnit XML results for test reporters.
+
+  test-results-xml-path:
+    type: string
+    default: "shiftleft-test-pack-results.xml"
+    description: Path for the JUnit XML, relative to the working directory.
+
+  working-directory:
+    type: string
+    default: ""
+    description: >
+      Where artifacts are written. Leave empty to use the shell's current directory, which is
+      the job's working_directory.
+
+  step-name:
+    type: string
+    default: "Run Shift-Left Studio test pack"
+    description: Name shown for the step in the CircleCI UI.
+
+steps:
+  - run:
+      name: << parameters.step-name >>
+      # Every value is quoted: CircleCI requires `environment` to be a map of string to string,
+      # and unquoted booleans/integers from parameters would fail validation.
+      environment:
+        SHIFTLEFT_SERVER_URL: "<< parameters.server-url >>"
+        SHIFTLEFT_TENANT_ID: "<< parameters.tenant-id >>"
+        SHIFTLEFT_PACK_ID: "<< parameters.pack-id >>"
+        SHIFTLEFT_WAIT_FOR_COMPLETION: "<< parameters.wait-for-completion >>"
+        SHIFTLEFT_POLL_INTERVAL_SECONDS: "<< parameters.poll-interval-seconds >>"
+        SHIFTLEFT_TIMEOUT_MINUTES: "<< parameters.timeout-minutes >>"
+        SHIFTLEFT_PASS_THRESHOLD_PERCENT: "<< parameters.pass-threshold-percent >>"
+        SHIFTLEFT_FAIL_ON_ERROR_TESTS: "<< parameters.fail-on-error-tests >>"
+        SHIFTLEFT_GATE_FAILURE_RESULT: "<< parameters.gate-failure-result >>"
+        SHIFTLEFT_WRITE_JSON_SUMMARY: "<< parameters.write-json-summary >>"
+        SHIFTLEFT_JSON_SUMMARY_PATH: "<< parameters.json-summary-path >>"
+        SHIFTLEFT_WRITE_TEST_RESULTS_XML: "<< parameters.write-test-results-xml >>"
+        SHIFTLEFT_TEST_RESULTS_XML_PATH: "<< parameters.test-results-xml-path >>"
+        SHIFTLEFT_WORKING_DIRECTORY: "<< parameters.working-directory >>"
+      command: |
+        set -eu
+
+        # Credentials are pulled from the named variables at runtime. Only the NAMES were
+        # rendered into the config, so no secret is ever committed or shown in the step text.
+        if [ -z "${<< parameters.api-email >>:-}" ]; then
+          echo "[ShiftLeft] Environment variable << parameters.api-email >> is not set." >&2
+          echo "[ShiftLeft] Add it as a CircleCI project or context variable." >&2
+          exit 1
+        fi
+        if [ -z "${<< parameters.api-password >>:-}" ]; then
+          echo "[ShiftLeft] Environment variable << parameters.api-password >> is not set." >&2
+          echo "[ShiftLeft] Add it as a CircleCI project or context variable." >&2
+          exit 1
+        fi
+        SHIFTLEFT_API_EMAIL="${<< parameters.api-email >>}"
+        SHIFTLEFT_API_PASSWORD="${<< parameters.api-password >>}"
+        export SHIFTLEFT_API_EMAIL SHIFTLEFT_API_PASSWORD
+
+        # The runner auto-detects a working directory from CIRCLE_WORKING_DIRECTORY, but CircleCI
+        # sets that to an unexpanded value such as "~/project". Resolving it here keeps artifacts
+        # next to the checkout instead of in a literal "~" directory.
+        if [ -z "${SHIFTLEFT_WORKING_DIRECTORY:-}" ]; then
+          SHIFTLEFT_WORKING_DIRECTORY="$(pwd)"
+          export SHIFTLEFT_WORKING_DIRECTORY
+        fi
+
+        npx -y @totalshiftleft/ci

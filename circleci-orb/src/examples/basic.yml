@@ -1,0 +1,44 @@
+description: >
+  Gate a build on a Shift-Left Studio test pack. Store SHIFTLEFT_API_EMAIL and
+  SHIFTLEFT_API_PASSWORD as context (or project) variables — the orb reads them by name, so no
+  secret ever appears in .circleci/config.yml.
+
+usage:
+  version: 2.1
+
+  orbs:
+    shiftleft: totalshiftleft/shiftleft@1.0.0
+
+  jobs:
+    # Calling the command from a job of your own, when you want the API tests to run alongside
+    # other steps. The ready-made shiftleft/api-tests job below needs none of this.
+    custom-api-tests:
+      docker:
+        - image: cimg/node:20.11
+      steps:
+        - checkout
+        - shiftleft/run-test-pack:
+            server-url: https://tenant.totalshiftleft.ai
+            pack-id: pack_123
+            tenant-id: acme
+            api-email: SHIFTLEFT_API_EMAIL
+            api-password: SHIFTLEFT_API_PASSWORD
+            pass-threshold-percent: 90
+            gate-failure-result: succeeded-with-issues
+        - store_artifacts:
+            path: shiftleft-test-pack-summary.json
+
+  workflows:
+    api-tests:
+      jobs:
+        # Ready-made job: runs the pack, publishes JUnit results and the JSON summary.
+        - shiftleft/api-tests:
+            context: shiftleft
+            server-url: https://tenant.totalshiftleft.ai
+            pack-id: pack_123
+            pass-threshold-percent: 95
+
+        - custom-api-tests:
+            context: shiftleft
+            requires:
+              - shiftleft/api-tests

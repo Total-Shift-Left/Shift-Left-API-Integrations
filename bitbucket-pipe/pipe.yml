@@ -1,0 +1,48 @@
+name: Shift-Left Studio Test Pack
+# The pipe is a thin wrapper around the generic runner image (see Dockerfile). Bitbucket
+# resolves a `pipe: <account>/<repo>:<tag>` reference to the Docker image of the same
+# coordinates, so when the wrapper image is published this field must be changed to
+# `totalshiftleft/shiftleft-test-pack:<version>`. Until then the runner image is what actually
+# executes, and `pipe: docker://totalshiftleft/ci-runner:1` works as-is.
+image: totalshiftleft/ci-runner:1
+description: >
+  Run a Shift-Left Studio test run pack, wait for that run to finish, gate the build on its pass
+  rate, and write a JSON summary plus JUnit XML.
+category: Testing
+vendor:
+  name: Total Shift Left
+  website: https://totalshiftleft.ai
+tags:
+  - api-testing
+  - quality-gate
+  - junit
+  - testing
+variables:
+  - name: SHIFTLEFT_SERVER_URL
+  - name: SHIFTLEFT_API_EMAIL
+  - name: SHIFTLEFT_API_PASSWORD
+  - name: SHIFTLEFT_PACK_ID
+  - name: SHIFTLEFT_TENANT_ID
+    default: ""
+  - name: SHIFTLEFT_WAIT_FOR_COMPLETION
+    default: "true"
+  - name: SHIFTLEFT_POLL_INTERVAL_SECONDS
+    default: "10"
+  - name: SHIFTLEFT_TIMEOUT_MINUTES
+    default: "60"
+  - name: SHIFTLEFT_PASS_THRESHOLD_PERCENT
+    default: "100"
+  - name: SHIFTLEFT_FAIL_ON_ERROR_TESTS
+    default: "true"
+  - name: SHIFTLEFT_GATE_FAILURE_RESULT
+    default: "failed"
+  - name: SHIFTLEFT_WRITE_JSON_SUMMARY
+    default: "true"
+  - name: SHIFTLEFT_JSON_SUMMARY_PATH
+    default: "shiftleft-test-pack-summary.json"
+  - name: SHIFTLEFT_WRITE_TEST_RESULTS_XML
+    default: "true"
+  - name: SHIFTLEFT_TEST_RESULTS_XML_PATH
+    default: "shiftleft-test-pack-results.xml"
+  - name: SHIFTLEFT_WORKING_DIRECTORY
+    default: ""

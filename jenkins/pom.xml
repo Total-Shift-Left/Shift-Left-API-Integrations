@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>org.jenkins-ci.plugins</groupId>
+    <artifactId>plugin</artifactId>
+    <version>5.24</version>
+    <relativePath />
+  </parent>
+
+  <groupId>io.jenkins.plugins</groupId>
+  <artifactId>shift-left-api-automation-integration</artifactId>
+  <version>1.0.0</version>
+  <packaging>hpi</packaging>
+
+  <name>Shift-Left API Automation Integration</name>
+  <description>Jenkins integration for Shift-Left API Automation: trigger test packs from Freestyle jobs and gate builds based on results (Total Shift Left).</description>
+
+  <organization>
+    <name>Total Shift Left</name>
+    <url>https://www.totalshiftleft.ai</url>
+  </organization>
+
+  <developers>
+    <developer>
+      <id>totalshiftleft</id>
+      <name>Total Shift Left</name>
+      <email>support@totalshiftleft.com</email>
+      <organization>Total Shift Left</organization>
+      <organizationUrl>https://www.totalshiftleft.ai</organizationUrl>
+    </developer>
+  </developers>
+
+  <properties>
+    <!-- Jenkins LTS baseline -->
+    <jenkins.version>2.479.3</jenkins.version>
+    <java.level>17</java.level>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+  </properties>
+
+  <!-- Import Jenkins BOM to get plugin dependency versions (credentials, etc.) -->
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>io.jenkins.tools.bom</groupId>
+        <artifactId>bom-2.479.x</artifactId>
+        <!-- Use a BOM version available in repo.jenkins-ci.org/public -->
+        <version>4570.v1b_c718dd3b_1e</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+
+  <!-- Jenkins plugin parent + many plugin deps are published here (not Maven Central) -->
+  <repositories>
+    <repository>
+      <id>repo.jenkins-ci.org</id>
+      <url>https://repo.jenkins-ci.org/public/</url>
+    </repository>
+  </repositories>
+
+  <pluginRepositories>
+    <pluginRepository>
+      <id>repo.jenkins-ci.org</id>
+      <url>https://repo.jenkins-ci.org/public/</url>
+    </pluginRepository>
+  </pluginRepositories>
+
+  <dependencies>
+    <!-- Credentials -->
+    <dependency>
+      <groupId>org.jenkins-ci.plugins</groupId>
+      <artifactId>credentials</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.jenkins-ci.plugins</groupId>
+      <artifactId>plain-credentials</artifactId>
+    </dependency>
+
+    <!-- Jackson (Jenkins-provided API plugin) -->
+    <dependency>
+      <groupId>org.jenkins-ci.plugins</groupId>
+      <artifactId>jackson2-api</artifactId>
+    </dependency>
+
+    <!-- Needed at compile time because Jenkins core APIs reference jakarta.servlet.* -->
+    <dependency>
+      <groupId>jakarta.servlet</groupId>
+      <artifactId>jakarta.servlet-api</artifactId>
+      <version>6.0.0</version>
+      <scope>provided</scope>
+    </dependency>
+    
+    <!-- Tests -->
+    <dependency>
+      <groupId>org.jenkins-ci.main</groupId>
+      <artifactId>jenkins-test-harness</artifactId>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <finalName>totalshiftleft.shift-left-api-automation-integration-${project.version}</finalName>
+  </build>
+</project>
+

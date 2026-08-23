@@ -1,0 +1,160 @@
+description: >
+  Run a Shift-Left Studio test run pack as a standalone job, then publish the JSON summary as a
+  build artifact and the JUnit XML as CircleCI test results.
+
+  Uses cimg/base, which ships Node.js tooling capable of running `npx`. Add a context or project
+  variables for the API credentials.
+
+parameters:
+  server-url:
+    type: string
+    description: >
+      Base URL of your Shift-Left Studio deployment, with no trailing slash
+      (e.g. https://tenant.totalshiftleft.ai).
+
+  pack-id:
+    type: string
+    description: ID of the test run pack to execute.
+
+  api-email:
+    type: env_var_name
+    default: SHIFTLEFT_API_EMAIL
+    description: Name of the environment variable holding the API user's email.
+
+  api-password:
+    type: env_var_name
+    default: SHIFTLEFT_API_PASSWORD
+    description: Name of the environment variable holding the API user's password.
+
+  tenant-id:
+    type: string
+    default: ""
+    description: Tenant ID for multi-tenant installs, sent as X-Tenant-ID.
+
+  wait-for-completion:
+    type: boolean
+    default: true
+    description: Wait for the run to finish. Set to false to trigger and continue.
+
+  poll-interval-seconds:
+    type: integer
+    default: 10
+    description: How often to poll for status while waiting.
+
+  timeout-minutes:
+    type: integer
+    default: 60
+    description: Give up waiting after this many minutes and fail the job.
+
+  pass-threshold-percent:
+    type: integer
+    default: 100
+    description: Minimum pass rate (0-100) required for the gate. 0 disables the threshold check.
+
+  fail-on-error-tests:
+    type: boolean
+    default: true
+    description: Fail the gate when any test finishes in ERROR, regardless of pass rate.
+
+  gate-failure-result:
+    type: enum
+    enum: ["failed", "succeeded-with-issues"]
+    default: "failed"
+    description: >
+      What a failed gate does. "failed" fails the job; "succeeded-with-issues" only warns.
+
+  write-json-summary:
+    type: boolean
+    default: true
+    description: Write a JSON summary of the run.
+
+  json-summary-path:
+    type: string
+    default: "shiftleft-test-pack-summary.json"
+    description: Path for the JSON summary, relative to the working directory.
+
+  write-test-results-xml:
+    type: boolean
+    default: true
+    description: Write JUnit XML results for test reporters.
+
+  test-results-xml-path:
+    type: string
+    default: "shiftleft-test-pack-results.xml"
+    description: Path for the JUnit XML, relative to the working directory.
+
+  working-directory:
+    type: string
+    default: ""
+    description: Where artifacts are written. Empty means the job's working directory.
+
+  executor-image:
+    type: string
+    default: "cimg/base:current"
+    description: Docker image for the job. Must provide Node.js 20+ / npx.
+
+  resource-class:
+    type: string
+    default: "medium"
+    description: CircleCI resource class for the job.
+
+  checkout:
+    type: boolean
+    default: false
+    description: >
+      Check the repository out first. Not needed by the runner itself; enable it if you want the
+      artifacts written next to your sources.
+
+docker:
+  - image: << parameters.executor-image >>
+
+resource_class: << parameters.resource-class >>
+
+steps:
+  - when:
+      condition: << parameters.checkout >>
+      steps:
+        - checkout
+
+  - run-test-pack:
+      server-url: << parameters.server-url >>
+      pack-id: << parameters.pack-id >>
+      api-email: << parameters.api-email >>
+      api-password: << parameters.api-password >>
+      tenant-id: << parameters.tenant-id >>
+      wait-for-completion: << parameters.wait-for-completion >>
+      poll-interval-seconds: << parameters.poll-interval-seconds >>
+      timeout-minutes: << parameters.timeout-minutes >>
+      pass-threshold-percent: << parameters.pass-threshold-percent >>
+      fail-on-error-tests: << parameters.fail-on-error-tests >>
+      gate-failure-result: << parameters.gate-failure-result >>
+      write-json-summary: << parameters.write-json-summary >>
+      json-summary-path: << parameters.json-summary-path >>
+      write-test-results-xml: << parameters.write-test-results-xml >>
+      test-results-xml-path: << parameters.test-results-xml-path >>
+      working-directory: << parameters.working-directory >>
+
+  # store_test_results wants a directory, and the contract's default XML path is a bare
+  # filename, so stage a copy. `when: always` keeps results published on a failed gate.
+  - run:
+      name: Stage JUnit results
+      when: always
+      command: |
+        set -eu
+        mkdir -p /tmp/shiftleft-test-results
+        if [ -f "<< parameters.test-results-xml-path >>" ]; then
+          cp "<< parameters.test-results-xml-path >>" /tmp/shiftleft-test-results/
+        else
+          echo "[ShiftLeft] No JUnit XML at << parameters.test-results-xml-path >>; nothing to stage."
+        fi
+
+  - store_test_results:
+      path: /tmp/shiftleft-test-results
+
+  - store_artifacts:
+      path: << parameters.json-summary-path >>
+      destination: shiftleft/<< parameters.json-summary-path >>
+
+  - store_artifacts:
+      path: << parameters.test-results-xml-path >>
+      destination: shiftleft/<< parameters.test-results-xml-path >>
