@@ -1,10 +1,3 @@
-> ### ⚠️ The binary committed in this directory is out of date
->
-> It was built before a correctness fix landed: the plugin could read the **previous** test run's
-> results and pass a build whose new run had not finished, so a pipeline goes green on stale data.
-> The source in this directory is fixed; the committed binary is not. Build from source, or wait
-> for the first tagged release, before relying on it in a pipeline.
-
 # Shift-Left API Automation Integration — Azure DevOps extension
 
 Published on the **Visual Studio Marketplace** under **Total Shift Left** (publisher id: **`totalshiftleft`**, Commercial offering). Extension support: **support@totalshiftleft.com**.

@@ -13,3 +13,8 @@ target/
 # github-actions/dist MUST be committed: GitHub runs the bundle directly with no
 # install step, so an uncommitted dist means the action fails for every consumer
 # with "Cannot find module". Do not add it here.
+
+# Packaged plugin/extension builds. These belong on a release tag, not in git —
+# a committed binary silently goes stale against the source next to it.
+*.hpi
+*.vsix

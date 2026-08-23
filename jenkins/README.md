@@ -1,10 +1,3 @@
-> ### ⚠️ The binary committed in this directory is out of date
->
-> It was built before a correctness fix landed: the plugin could read the **previous** test run's
-> results and pass a build whose new run had not finished, so a pipeline goes green on stale data.
-> The source in this directory is fixed; the committed binary is not. Build from source, or wait
-> for the first tagged release, before relying on it in a pipeline.
-
 # Shift-Left API Automation Integration (Jenkins)
 
 Jenkins plugin by [Total Shift Left](https://www.totalshiftleft.ai) that runs **Shift-Left API Automation** test packs from **Freestyle** jobs. It uses your backend’s public API (`/api/v1`): login, trigger a test pack, optionally wait and poll for completion, apply a quality gate, and optionally write JSON or JUnit XML to the workspace.
@@ -17,7 +10,7 @@ Jenkins plugin by [Total Shift Left](https://www.totalshiftleft.ai) that runs **
 
 In the file name, replace `{version}` with the release number (semantic version, e.g. `1.0.0`). Example: `totalshiftleft.shift-left-api-automation-integration-1.0.0.hpi`.
 
-This repository contains that **`.hpi` file** and this README only—no source code. Use the steps below to install and configure it.
+The plugin source lives in this directory (`pom.xml`, `src/`). Build the `.hpi` yourself, or take one from a tagged release, then use the steps below to install and configure it.
 
 **Supported Jenkins:** 2.479.x LTS or newer (Java 17 on the controller is typical for current LTS).
 
@@ -25,7 +18,7 @@ This repository contains that **`.hpi` file** and this README only—no source c
 
 ## Install the plugin
 
-1. **Download** `totalshiftleft.shift-left-api-automation-integration-{version}.hpi` from this repository (for example `totalshiftleft.shift-left-api-automation-integration-1.0.0.hpi` when `{version}` is **1.0.0**). It may live in the repository root or a `releases/` folder—use whichever path your copy of the repo uses. Save the file where you can select it in the Jenkins upload dialog (typically the machine running your browser).
+1. **Get the `.hpi`.** Download it from the [release](https://github.com/Total-Shift-Left/Shift-Left-API-Integrations/releases) for the version you want, or build it from this directory with `mvn -B -ntp verify` — it lands in `target/`. Save the file where you can select it in the Jenkins upload dialog (typically the machine running your browser).
 2. In Jenkins, go to **Manage Jenkins → Plugins**.
 3. Open the **Advanced settings** tab (or **Advanced** on older versions).
 4. Under **Deploy Plugin**, click **Choose File**, select the downloaded `.hpi`, then **Deploy**.
