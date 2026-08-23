@@ -11,9 +11,9 @@ jobs:
     name: Node packages
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: '20'
           cache: npm
@@ -35,10 +35,10 @@ jobs:
     name: Jenkins plugin
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # Jenkins 2.479.x LTS baseline requires Java 17.
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
@@ -48,7 +48,7 @@ jobs:
         working-directory: jenkins
         run: mvn -B -ntp verify
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: jenkins-hpi
           path: jenkins/target/*.hpi
@@ -58,9 +58,9 @@ jobs:
     name: Azure DevOps extension
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: '20'
           cache: npm
@@ -73,7 +73,7 @@ jobs:
           cd azure-devops
           tfx extension create --manifest-globs vss-extension.json --output-path "$RUNNER_TEMP/vsix"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: azure-devops-vsix
           path: ${{ runner.temp }}/vsix/*.vsix
