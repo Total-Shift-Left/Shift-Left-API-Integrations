@@ -1,0 +1,18 @@
+# github-actions/dist/ is committed and CI rebuilds it to prove it is current. ncc embeds the full
+# source text of every bundled file into index.js.map, so a CRLF working tree produces a sourcemap
+# that can never byte-match one built on the Linux runner - the check then fails for anyone who
+# builds on Windows, no matter how current their bundle is. Pin the working tree to LF everywhere so
+# the build is reproducible regardless of who runs it.
+* text=auto eol=lf
+
+# Generated output: compare byte-for-byte, never convert.
+github-actions/dist/** -text
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.svg binary
+*.hpi binary
+*.vsix binary
