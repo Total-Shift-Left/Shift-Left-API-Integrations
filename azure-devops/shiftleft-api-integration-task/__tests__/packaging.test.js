@@ -20,6 +20,9 @@ const vssExtension = JSON.parse(
 const taskJson = JSON.parse(
   fs.readFileSync(path.join(__dirname, '..', 'task.json'), 'utf8')
 );
+const packageJson = JSON.parse(
+  fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8')
+);
 
 const packagedPaths = (vssExtension.files || []).map((f) => f.path.replace(/\\/g, '/'));
 
@@ -64,6 +67,16 @@ describe('vsix contents', () => {
       (c) => c.type === 'ms.vss-distributed-task.task'
     );
     expect(task.properties.name).toBe(TASK_DIR);
+  });
+
+  test('the extension, the task and the package agree on one version', () => {
+    // Three places, and until this test they were kept in step by a bullet in the release
+    // checklist. The Marketplace refuses to overwrite a published version, and agents cache task
+    // code by task.json's version - so a missed bump either fails the publish or, worse, leaves
+    // agents running the previous bundle under the new version's name.
+    const { Major, Minor, Patch } = taskJson.version;
+    expect(`${Major}.${Minor}.${Patch}`).toBe(vssExtension.version);
+    expect(packageJson.version).toBe(vssExtension.version);
   });
 
   test('every packaged path that is not build output exists', () => {

@@ -1,6 +1,6 @@
 {
   "name": "shiftleft-api-integration-task",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "description": "Pipeline handler for Shift-Left API Automation Integration: run ShiftLeft test packs, apply quality gates, emit JSON and JUnit XML for Azure Pipelines.",
   "main": "index.js",

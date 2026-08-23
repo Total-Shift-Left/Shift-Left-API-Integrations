@@ -138,11 +138,39 @@ same way the GitHub Action is. `task.json` runs `dist/index.js`; `index.js` is t
 
 5. Upload the `.vsix` in Azure DevOps: **Organization settings → Extensions → Shared → Upload**.
 
+## Publish to the Visual Studio Marketplace
+
+Live listing: [`TotalShiftLeft.shift-left-api-automation-integration`](https://marketplace.visualstudio.com/items?itemName=totalshiftleft.shift-left-api-automation-integration). The publisher is verified and the extension is public, so a publish goes straight to Marketplace validation with no sharing step.
+
+**A published version can never be replaced.** The Marketplace rejects a publish whose version already exists, so every release needs a bump first — see the checklist below.
+
+```bash
+npm run build:azure-task                      # from the repository root
+cd azure-devops
+tfx extension publish --manifest-globs vss-extension.json --token <PAT>
+```
+
+The PAT comes from **[dev.azure.com](https://dev.azure.com) → User settings → Personal access tokens**, and must be created with:
+
+- **Organization:** *All accessible organizations* (Marketplace tokens are rejected if scoped to a single org)
+- **Scopes:** *Marketplace → Manage*
+
+Validation takes a few minutes after the upload returns; the listing shows the new version once it passes.
+
 ### Before each release
 
 - Confirm `publisher` in [`vss-extension.json`](vss-extension.json) remains **`totalshiftleft`** (Total Shift Left).
-- Bump `version` in `vss-extension.json` and matching `version` in `shiftleft-api-integration-task/task.json`.
-- Upload or publish via `tfx extension publish` using credentials for the **totalshiftleft** publisher ([docs](https://learn.microsoft.com/en-us/azure/devops/extend/publish/overview)).
+- Bump the version in all three places — `vss-extension.json`, `shiftleft-api-integration-task/task.json` (`Major`/`Minor`/`Patch`) and `shiftleft-api-integration-task/package.json`. They must match: `__tests__/packaging.test.js` fails if they drift.
+
+  Bumping `task.json` is not cosmetic. Agents cache task code by that version, so an unbumped task keeps running the previously cached bundle even after the extension updates.
+- Check the version is not already on the Marketplace — the publish fails if it is:
+
+  ```bash
+  curl -sS -X POST https://marketplace.visualstudio.com/_apis/public/gallery/extensionquery \
+    -H 'Accept: application/json;api-version=3.0-preview.1' -H 'Content-Type: application/json' \
+    -d '{"filters":[{"criteria":[{"filterType":7,"value":"totalshiftleft.shift-left-api-automation-integration"}]}],"flags":914}'
+  ```
+- Attach the same `.vsix` to the `azure-devops/vX.Y.Z` GitHub release so the two stay in step.
 
 ## Develop & test
 

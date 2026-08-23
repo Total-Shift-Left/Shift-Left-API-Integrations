@@ -2,7 +2,7 @@
   "manifestVersion": 1,
   "id": "shift-left-api-automation-integration",
   "name": "Shift-Left API Automation Integration",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "publisher": "totalshiftleft",
   "description": "Run ShiftLeft API test packs from Azure Pipelines with quality gates, publishable test results, and support for governed, multi-tenant deployments.",
   "public": true,
