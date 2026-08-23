@@ -31,6 +31,7 @@ a release tag when you ship them.
 
 ```bash
 mvn -B -ntp verify              # in jenkins/  → target/*.hpi
+npm run build:azure-task        # from the root; the Azure task ships an ncc bundle, not node_modules
 npx tfx-cli extension create    # in azure-devops/ → *.vsix
 ```
 

@@ -1,5 +1,7 @@
 # Optional: create a pipeline in Azure DevOps with this file as the YAML source path
 # to run tests and build the ShiftLeft extension VSIX on each change.
+#
+# The authoritative build is .github/workflows/ci.yml; keep the two in step.
 name: shiftleft-ado-extension-$(Date:yyyyMMdd)$(Rev:.r)
 
 trigger:
@@ -9,7 +11,7 @@ trigger:
       - main
   paths:
     include:
-      - azure-devops-shiftleft-extension/*
+      - azure-devops/*
 
 pool:
   vmImage: ubuntu-latest
@@ -20,30 +22,41 @@ steps:
       versionSpec: '20.x'
     displayName: Use Node 20
 
-  - script: |
-      cd azure-devops-shiftleft-extension/shiftleft-api-integration-task
-      npm ci
-      npm run generate-extension-icon
-      npm test
-    displayName: npm test + icon generation (ShiftLeft task)
+  # npm workspaces repo: install once at the root. Dependencies hoist there, which is exactly why
+  # the task cannot be packaged as a directory of node_modules.
+  - script: npm ci --no-audit --no-fund
+    displayName: npm ci (workspaces root)
 
-  - script: |
-      cd azure-devops-shiftleft-extension/shiftleft-api-integration-task
-      rm -rf node_modules
-      npm ci --omit=dev
-    displayName: Production npm ci for packaging
+  - script: npm test
+    displayName: npm test
+
+  - script: npm run generate-extension-icon --workspace=azure-devops/shiftleft-api-integration-task
+    displayName: Icon generation (verifies Sharp works on the agent)
+
+  # Agents never install dependencies for a task, so the task must be a self-contained bundle.
+  - script: npm run build:azure-task
+    displayName: Build the task bundle (ncc)
 
   - script: npm install -g tfx-cli
     displayName: Install tfx-cli
 
   - script: |
-      cd azure-devops-shiftleft-extension
-      tfx extension create --manifest-globs vss-extension.json
+      cd azure-devops
+      tfx extension create --manifest-globs vss-extension.json --output-path "$(Build.ArtifactStagingDirectory)"
     displayName: tfx extension create
+
+  # A VSIX missing a dependency packages cleanly and only fails at runtime, on "Cannot find
+  # module". Load the packaged entry point for real so that failure lands here instead.
+  - script: |
+      set -euo pipefail
+      unzip -q "$(Build.ArtifactStagingDirectory)"/*.vsix -d "$(Agent.TempDirectory)/vsix"
+      cd "$(Agent.TempDirectory)/vsix/shiftleft-api-integration-task"
+      node -e "if (typeof require('./dist/index.js').run !== 'function') throw new Error('bad bundle')"
+    displayName: Verify the packaged task resolves its dependencies
 
   - task: PublishPipelineArtifact@1
     inputs:
-      targetPath: 'azure-devops-shiftleft-extension'
+      targetPath: '$(Build.ArtifactStagingDirectory)'
       artifact: 'shiftleft-ado-extension'
       publishLocation: 'pipeline'
-    displayName: Publish folder (contains .vsix)
+    displayName: Publish the .vsix

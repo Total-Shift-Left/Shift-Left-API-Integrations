@@ -67,11 +67,46 @@ jobs:
 
       - run: npm install --no-audit --no-fund
 
+      # Azure Pipelines agents never run an install step for a task, so every dependency has to be
+      # inside the .vsix. This is a workspaces repo - deps hoist to the root node_modules and the
+      # task directory has none of its own - so bundle the task with ncc instead, exactly like the
+      # Action. task.json points its execution target at dist/index.js.
+      - name: Build the task bundle
+        run: npm run build:azure-task
+
       - name: Package .vsix
         run: |
           npm install -g tfx-cli
           cd azure-devops
           tfx extension create --manifest-globs vss-extension.json --output-path "$RUNNER_TEMP/vsix"
+
+      # A .vsix that is missing a dependency still packages fine and only fails on the agent, at
+      # "Cannot find module". Unpack it and load the entry point for real so that failure lands here.
+      - name: Verify the packaged task resolves its dependencies
+        run: |
+          set -euo pipefail
+          unzip -q "$RUNNER_TEMP"/vsix/*.vsix -d "$RUNNER_TEMP/vsix-unpacked"
+          task_dir="$RUNNER_TEMP/vsix-unpacked/shiftleft-api-integration-task"
+
+          echo "Packaged task contents:"
+          find "$task_dir" -type f | sort
+
+          for unwanted in __tests__ scripts node_modules; do
+            if [ -e "$task_dir/$unwanted" ]; then
+              echo "::error::$unwanted was packaged into the .vsix"; exit 1
+            fi
+          done
+
+          target=$(node -p "require('$task_dir/task.json').execution.Node20_1.target")
+          [ -f "$task_dir/$target" ] || { echo "::error::task.json target $target is not in the .vsix"; exit 1; }
+
+          # require() rather than run: the entry point guards on require.main, so this resolves
+          # every dependency without starting a test run.
+          ( cd "$task_dir" && node -e "
+            const m = require('./$target');
+            if (typeof m.run !== 'function') { throw new Error('bundle did not export run()'); }
+            console.log('resolved every require from inside the .vsix');
+          " )
 
       - uses: actions/upload-artifact@v7
         with:

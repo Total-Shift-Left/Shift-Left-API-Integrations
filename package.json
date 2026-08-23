@@ -18,7 +18,8 @@
   ],
   "scripts": {
     "test": "npm run test --workspace=ci-client && npm run test --workspace=github-actions && npm run test --workspace=azure-devops/shiftleft-api-integration-task",
-    "build:action": "npm run build --workspace=github-actions"
+    "build:action": "npm run build --workspace=github-actions",
+    "build:azure-task": "npm run build --workspace=azure-devops/shiftleft-api-integration-task"
   },
   "devDependencies": {
     "jest": "^29.7.0"

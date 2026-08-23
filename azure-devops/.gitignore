@@ -1,2 +1,7 @@
 shiftleft-api-integration-task/node_modules/
 shiftleft-api-integration-task/coverage/
+
+# The ncc bundle is built during packaging (npm run build:azure-task) and shipped inside the
+# .vsix - unlike github-actions/dist, nothing runs it straight from the repo, so it is not
+# committed.
+shiftleft-api-integration-task/dist/

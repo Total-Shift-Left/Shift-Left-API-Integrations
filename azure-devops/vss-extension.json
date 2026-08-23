@@ -17,7 +17,13 @@
   },
   "files": [
     {
-      "path": "shiftleft-api-integration-task"
+      "path": "shiftleft-api-integration-task/task.json"
+    },
+    {
+      "path": "shiftleft-api-integration-task/icon.png"
+    },
+    {
+      "path": "shiftleft-api-integration-task/dist"
     },
     {
       "path": "images",

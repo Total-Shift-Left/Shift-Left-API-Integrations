@@ -100,19 +100,24 @@ Commit the updated `images/extension-icon.png` and `shiftleft-api-integration-ta
 
 ## Build the `.vsix`
 
-From this directory (`azure-devops-shiftleft-extension/`):
+Azure Pipelines agents do **not** run an install step for a task, so every dependency has to be
+inside the VSIX. This is an npm workspaces repo — dependencies hoist to the repository-root
+`node_modules` and `shiftleft-api-integration-task/node_modules` never exists — so the task is
+bundled into a single self-contained file with [ncc](https://github.com/vercel/ncc) instead, the
+same way the GitHub Action is. `task.json` runs `dist/index.js`; `index.js` is the source.
 
-1. **Install production dependencies** for the task (so the VSIX includes `node_modules`):
+1. **Build the task bundle** (from the repository root):
 
    ```bash
-   cd shiftleft-api-integration-task
-   npm ci --omit=dev
-   cd ..
+   npm run build:azure-task
    ```
+
+   This writes `shiftleft-api-integration-task/dist/`. It is gitignored — rebuild it before every
+   package.
 
 2. **Install** [TFX CLI](https://github.com/microsoft/tfs-cli): `npm install -g tfx-cli`
 
-3. **Create the package** (run in folder that contains `vss-extension.json`):
+3. **Create the package** (run in this directory, the one that contains `vss-extension.json`):
 
    ```bash
    tfx extension create --manifest-globs vss-extension.json
@@ -120,7 +125,18 @@ From this directory (`azure-devops-shiftleft-extension/`):
 
    This produces a VSIX named like **`totalshiftleft.shift-left-api-automation-integration-{version}.vsix`** (from `publisher` + extension `id` in the manifest).
 
-4. Upload the `.vsix` in Azure DevOps: **Organization settings → Extensions → Shared → Upload**.
+4. **Check what you built.** A VSIX missing a dependency packages cleanly and only fails on the
+   agent, at `Cannot find module`. Unzip it and load the entry point for real:
+
+   ```bash
+   unzip -o totalshiftleft.*.vsix -d /tmp/vsix && cd /tmp/vsix/shiftleft-api-integration-task
+   node -e "require('./dist/index.js')"
+   ```
+
+   CI does the same thing on every push. `__tests__/packaging.test.js` guards the manifest's file
+   list against drifting away from `task.json`.
+
+5. Upload the `.vsix` in Azure DevOps: **Organization settings → Extensions → Shared → Upload**.
 
 ### Before each release
 
