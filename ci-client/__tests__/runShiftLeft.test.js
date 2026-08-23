@@ -9,6 +9,27 @@ const {
   createCoreFromProcessEnv,
   INPUT_TO_ENV,
 } = require('../src/envCore');
+const { DEFAULT_WORKING_DIR_ENV_VARS } = require('../src/runShiftLeft');
+
+// The runner resolves the working directory from the first of DEFAULT_WORKING_DIR_ENV_VARS that is
+// set. These tests pin it with CIRCLE_WORKING_DIRECTORY, so any higher-precedence variable already
+// in the host's environment wins instead — and GITHUB_WORKSPACE is always set when this suite runs
+// on GitHub Actions, which sent the artifacts to the checkout directory and failed the assertions
+// in CI while passing on every developer machine. Clear the whole list, then set the one under test.
+function pinWorkingDir(dir) {
+  const saved = new Map();
+  for (const name of DEFAULT_WORKING_DIR_ENV_VARS) {
+    saved.set(name, process.env[name]);
+    delete process.env[name];
+  }
+  process.env.CIRCLE_WORKING_DIRECTORY = dir;
+  return function restore() {
+    for (const [name, value] of saved) {
+      if (value === undefined) delete process.env[name];
+      else process.env[name] = value;
+    }
+  };
+}
 
 function createMockCore(inputs) {
   const outputs = {};
@@ -70,14 +91,15 @@ describe('createCoreFromProcessEnv', () => {
 
 describe('runShiftLeftFromEnv', () => {
   let tmpDir;
+  let restoreWorkingDir;
 
   beforeEach(() => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cc-shiftleft-'));
-    process.env.CIRCLE_WORKING_DIRECTORY = tmpDir;
+    restoreWorkingDir = pinWorkingDir(tmpDir);
   });
 
   afterEach(() => {
-    delete process.env.CIRCLE_WORKING_DIRECTORY;
+    restoreWorkingDir();
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
@@ -289,14 +311,15 @@ describe('F7 - does not grade the previous execution', () => {
 // silently-missing results file is the kind of thing nobody notices until a release.
 describe('artifact defaults', () => {
   let defaultsTmpDir;
+  let restoreWorkingDir;
 
   beforeEach(() => {
     defaultsTmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sl-defaults-'));
-    process.env.CIRCLE_WORKING_DIRECTORY = defaultsTmpDir;
+    restoreWorkingDir = pinWorkingDir(defaultsTmpDir);
   });
 
   afterEach(() => {
-    delete process.env.CIRCLE_WORKING_DIRECTORY;
+    restoreWorkingDir();
     fs.rmSync(defaultsTmpDir, { recursive: true, force: true });
   });
 

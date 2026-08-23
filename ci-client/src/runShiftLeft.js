@@ -356,4 +356,8 @@ async function writeOutputs(
   }
 }
 
-module.exports = { runShiftLeft, mapGateFailureInputToSeverity };
+module.exports = {
+  runShiftLeft,
+  mapGateFailureInputToSeverity,
+  DEFAULT_WORKING_DIR_ENV_VARS,
+};

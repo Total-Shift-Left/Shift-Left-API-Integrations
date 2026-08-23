@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
@@ -29,7 +30,8 @@ public class ShiftLeftTestPackBuilderIntegrationTest {
 
   private HttpServer server;
   private int port;
-  private final AtomicInteger statusCalls = new AtomicInteger(0);
+  private final AtomicBoolean triggered = new AtomicBoolean(false);
+  private final AtomicInteger statusCallsAfterTrigger = new AtomicInteger(0);
 
   @Before
   public void setUp() throws Exception {
@@ -42,22 +44,31 @@ public class ShiftLeftTestPackBuilderIntegrationTest {
       return "{\"token\":\"test-token\"}";
     }));
 
-    server.createContext("/api/v1/test-packs/pack_1/run", json((ex) ->
-      "{\"message\":\"started\",\"executionId\":\"exec_trigger\",\"packId\":\"pack_1\",\"status\":\"RUNNING\",\"startTime\":\"2026-01-01T00:00:00Z\"}"
-    ));
+    server.createContext("/api/v1/test-packs/pack_1/run", json((ex) -> {
+      triggered.set(true);
+      return "{\"message\":\"started\",\"executionId\":\"exec_trigger\",\"packId\":\"pack_1\",\"status\":\"RUNNING\",\"startTime\":\"2026-01-01T00:00:00Z\"}";
+    }));
 
+    // The plugin probes status before triggering, records that executionId as the previous run, and
+    // then refuses to gate until status reports a different one — that is the whole point of the
+    // stale-results fix. So this stub has to actually advance: pexec_1 until the run is triggered,
+    // exec_trigger afterwards. Serving pexec_1 throughout (as it used to) makes the plugin wait
+    // correctly and the build time out, which is a passing plugin and a failing test.
     server.createContext("/api/v1/test-packs/pack_1/status", json((ex) -> {
-      int n = statusCalls.incrementAndGet();
-      if (n == 1) {
-        return "{\"packId\":\"pack_1\",\"name\":\"Pack 1\",\"status\":\"RUNNING\",\"executionId\":\"pexec_1\",\"startTime\":\"2026-01-01T00:00:00Z\",\"summary\":{\"total\":2,\"passed\":0,\"failed\":0,\"error\":0,\"successRate\":0}}";
+      if (!triggered.get()) {
+        return "{\"packId\":\"pack_1\",\"name\":\"Pack 1\",\"status\":\"COMPLETED\",\"executionId\":\"pexec_1\",\"startTime\":\"2026-01-01T00:00:00Z\",\"endTime\":\"2026-01-01T00:01:00Z\",\"summary\":{\"total\":2,\"passed\":2,\"failed\":0,\"error\":0,\"successRate\":100}}";
       }
-      return "{\"packId\":\"pack_1\",\"name\":\"Pack 1\",\"status\":\"COMPLETED\",\"executionId\":\"pexec_1\",\"startTime\":\"2026-01-01T00:00:00Z\",\"endTime\":\"2026-01-01T00:01:00Z\",\"summary\":{\"total\":2,\"passed\":2,\"failed\":0,\"error\":0,\"successRate\":100}}";
+      // One RUNNING poll first, so the wait loop is exercised rather than short-circuited.
+      if (statusCallsAfterTrigger.incrementAndGet() == 1) {
+        return "{\"packId\":\"pack_1\",\"name\":\"Pack 1\",\"status\":\"RUNNING\",\"executionId\":\"exec_trigger\",\"startTime\":\"2026-01-01T00:02:00Z\",\"summary\":{\"total\":2,\"passed\":0,\"failed\":0,\"error\":0,\"successRate\":0}}";
+      }
+      return "{\"packId\":\"pack_1\",\"name\":\"Pack 1\",\"status\":\"COMPLETED\",\"executionId\":\"exec_trigger\",\"startTime\":\"2026-01-01T00:02:00Z\",\"endTime\":\"2026-01-01T00:03:00Z\",\"summary\":{\"total\":2,\"passed\":2,\"failed\":0,\"error\":0,\"successRate\":100}}";
     }));
 
     server.createContext("/api/v1/test-packs/pack_1/results", json((ex) -> {
       String q = ex.getRequestURI().getQuery();
-      // Ensure we handle executionId=pexec_1, but we don’t need to assert here.
-      return "{\"packId\":\"pack_1\",\"packName\":\"Pack 1\",\"executionId\":\"pexec_1\",\"startTime\":\"2026-01-01T00:00:00Z\",\"endTime\":\"2026-01-01T00:01:00Z\",\"summary\":{\"total\":2,\"passed\":2,\"failed\":0,\"error\":0,\"successRate\":100},\"results\":[{\"testId\":\"t1\",\"testName\":\"Test 1\",\"status\":\"PASSED\",\"duration\":1200,\"responseTime\":200},{\"testId\":\"t2\",\"testName\":\"Test 2\",\"status\":\"PASSED\",\"duration\":800,\"responseTime\":150}]}";
+      // Results belong to the execution the plugin waited for, not the previous one.
+      return "{\"packId\":\"pack_1\",\"packName\":\"Pack 1\",\"executionId\":\"exec_trigger\",\"startTime\":\"2026-01-01T00:02:00Z\",\"endTime\":\"2026-01-01T00:03:00Z\",\"summary\":{\"total\":2,\"passed\":2,\"failed\":0,\"error\":0,\"successRate\":100},\"results\":[{\"testId\":\"t1\",\"testName\":\"Test 1\",\"status\":\"PASSED\",\"duration\":1200,\"responseTime\":200},{\"testId\":\"t2\",\"testName\":\"Test 2\",\"status\":\"PASSED\",\"duration\":800,\"responseTime\":150}]}";
     }));
 
     server.start();
