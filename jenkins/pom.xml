@@ -12,7 +12,7 @@
 
   <groupId>io.jenkins.plugins</groupId>
   <artifactId>shift-left-api-automation-integration</artifactId>
-  <version>1.0.0</version>
+  <version>1.0.1</version>
   <packaging>hpi</packaging>
 
   <name>Shift-Left API Automation Integration</name>

@@ -36,9 +36,7 @@ function evaluate(
     if (sr + 1e-9 < threshold) {
       return { decision: 'GATE_FAIL_THRESHOLD', taskCompletion: taskCompletionFromInternal(gateFail) };
     }
-    if (normalized === 'COMPLETED' || normalized === 'FAILED') {
-      return { decision: 'PASSED', taskCompletion: taskCompletionFromInternal('SUCCESS') };
-    }
+    // Threshold met: pass regardless of status (even FAILED), which is what the user asked for.
     return { decision: 'PASSED', taskCompletion: taskCompletionFromInternal('SUCCESS') };
   }
 

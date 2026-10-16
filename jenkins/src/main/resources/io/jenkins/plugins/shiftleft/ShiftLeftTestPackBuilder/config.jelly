@@ -125,7 +125,7 @@
     </f:entry>
 
     <f:entry title="Write JUnit XML" field="writeJUnitXml" description="Generate a JUnit XML report for test results">
-      <f:checkbox />
+      <f:checkbox default="true"/>
       <div class="shiftleft-help-text">
         If enabled, a JUnit-compatible XML file will be generated. This allows Jenkins to parse test results and display them in the Test Results section. Requires "Wait for completion" to be enabled.
       </div>

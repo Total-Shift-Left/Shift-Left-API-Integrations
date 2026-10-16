@@ -8,7 +8,7 @@ Jenkins plugin by [Total Shift Left](https://www.totalshiftleft.ai) that runs **
 | **Shown in Jenkins** | Shift-Left API Automation Integration |
 | **Package file name** | `totalshiftleft.shift-left-api-automation-integration-{version}.hpi` |
 
-In the file name, replace `{version}` with the release number (semantic version, e.g. `1.0.0`). Example: `totalshiftleft.shift-left-api-automation-integration-1.0.0.hpi`.
+In the file name, replace `{version}` with the release number (semantic version, e.g. `1.0.1`). Example: `totalshiftleft.shift-left-api-automation-integration-1.0.1.hpi`.
 
 The plugin source lives in this directory (`pom.xml`, `src/`). Build the `.hpi` yourself, or take one from a tagged release, then use the steps below to install and configure it.
 
@@ -32,7 +32,7 @@ If Jenkins reports missing dependencies, install the suggested plugins (for exam
 ## Prerequisites
 
 - Network path from the Jenkins controller to your **Shift-Left API** base URL (HTTPS recommended).
-- A Jenkins credential of type **Username with password**: **username** = API login email, **password** = API password.
+- A Jenkins credential of type **Username with password**: **username** = API login email, **password** = API password. Store it where the job can read it -- **Manage Jenkins > Credentials** (global), or a folder containing the job. A credential kept in a user's own personal store is not available to builds and is not offered in the job's **Credentials** dropdown.
 - Your Shift-Left deployment must expose the API this plugin expects (`POST /api/v1/login`, test pack run, status, results, and listing packs).
 - **Multi-tenant** setups: you may need to set **Tenant ID** in the job so requests include `X-Tenant-ID`.
 
@@ -58,7 +58,7 @@ If Jenkins reports missing dependencies, install the suggested plugins (for exam
    - **Build result on gate failure**: choose how Jenkins should mark the build (for example **FAILURE** or **UNSTABLE**).
 7. **Artifacts (optional)**
    - Enable **Write JSON summary** and set the workspace-relative path if you want a JSON report.
-   - Enable **Write JUnit XML** and set its path if you want JUnit output; you can then add a **Publish JUnit test result report** post-build step pointing at that file.
+   - **Write JUnit XML** is on by default; set its path and add a **Publish JUnit test result report** post-build step pointing at that file to surface per-test results in Jenkins.
 
 After a build, open the build page and use the **Shift-Left API Automation Integration** link in the sidebar for a summary and links to workspace files when those options are enabled.
 

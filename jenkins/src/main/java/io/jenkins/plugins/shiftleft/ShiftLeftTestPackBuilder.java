@@ -7,9 +7,12 @@ import hudson.Extension;
 import hudson.FilePath;
 import hudson.Launcher;
 import hudson.model.Item;
+import hudson.model.Queue;
 import hudson.model.Result;
 import hudson.model.Run;
 import hudson.model.TaskListener;
+import hudson.model.queue.Tasks;
+import hudson.security.ACL;
 import hudson.tasks.BuildStepDescriptor;
 import hudson.tasks.Builder;
 import hudson.util.FormValidation;
@@ -20,6 +23,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import jenkins.tasks.SimpleBuildStep;
+import org.springframework.security.core.Authentication;
 import jenkins.model.Jenkins;
 import hudson.ExtensionList;
 import org.kohsuke.stapler.AncestorInPath;
@@ -63,7 +67,10 @@ public class ShiftLeftTestPackBuilder extends Builder implements SimpleBuildStep
 
   private boolean writeJsonSummary = true;
   private String jsonSummaryPath = "shiftleft-test-pack-summary.json";
-  private boolean writeJUnitXml = false;
+  // Defaults to true, matching write-test-results-xml in the shared ci-client runner: JUnit XML
+  // is how CI surfaces per-test results and this plugin's README promises it. Existing jobs keep
+  // whatever their config.xml persists, so this only changes newly created steps.
+  private boolean writeJUnitXml = true;
   private String junitXmlPath = "shiftleft-test-pack-results.xml";
 
   @DataBoundConstructor
@@ -217,97 +224,29 @@ public class ShiftLeftTestPackBuilder extends Builder implements SimpleBuildStep
     listener.getLogger().println("[ShiftLeft] Tenant: " + (tenantId == null ? "(default)" : tenantId));
     listener.getLogger().println("[ShiftLeft] Pack ID: " + effectivePackId);
 
-    // Look up credentials - try multiple scopes: Run, Job, and Global
-    StandardUsernamePasswordCredentials creds = null;
-    Item job = run.getParent();
-    
-    // Try 1: Standard approach - findCredentialById with Run context
-    creds = CredentialsProvider.findCredentialById(
+    // Resolve the configured credential the one authorization-aware way: findCredentialById looks
+    // it up as the authentication the build runs as, and tracks the usage against the run.
+    //
+    // This used to fall through four more strategies when that returned null -- lookupCredentials()
+    // at global and job scope with Jenkins.getAuthentication() (SYSTEM on a build thread, so the
+    // job's own authentication was ignored), then the same two while impersonating the triggering
+    // user. Together they resolved credentials the job is not allowed to read, including another
+    // user's personal credentials: anyone who can configure a job could name an id and have it
+    // resolved by whoever triggered the build. A credential in the global store, or in a store the
+    // job inherits from its folder, resolves on this single call, and nothing in the repo or its
+    // history records a configuration that needed the rest, so the fallbacks are gone.
+    StandardUsernamePasswordCredentials creds = CredentialsProvider.findCredentialById(
         effectiveCredentialsId,
         StandardUsernamePasswordCredentials.class,
         run
     );
-    
-    // Try 2: Global scope with SYSTEM authentication (for global credentials)
+
     if (creds == null) {
-      List<StandardUsernamePasswordCredentials> allCreds = CredentialsProvider.lookupCredentials(
-          StandardUsernamePasswordCredentials.class,
-          Jenkins.get(),  // Global scope
-          Jenkins.getAuthentication(),
-          java.util.Collections.emptyList()
-      );
-      for (StandardUsernamePasswordCredentials c : allCreds) {
-        if (effectiveCredentialsId.equals(c.getId())) {
-          creds = c;
-          break;
-        }
-      }
-    }
-    
-    // Try 3: Job scope with SYSTEM authentication
-    if (creds == null) {
-      List<StandardUsernamePasswordCredentials> allCreds = CredentialsProvider.lookupCredentials(
-          StandardUsernamePasswordCredentials.class,
-          job,
-          Jenkins.getAuthentication(),
-          java.util.Collections.emptyList()
-      );
-      for (StandardUsernamePasswordCredentials c : allCreds) {
-        if (effectiveCredentialsId.equals(c.getId())) {
-          creds = c;
-          break;
-        }
-      }
-    }
-    
-    // Try 4: Global scope with user authentication (user-scoped global credentials)
-    if (creds == null) {
-      hudson.model.Cause.UserIdCause userIdCause = run.getCause(hudson.model.Cause.UserIdCause.class);
-      if (userIdCause != null) {
-        hudson.model.User user = hudson.model.User.get(userIdCause.getUserId(), false, java.util.Collections.emptyMap());
-        if (user != null) {
-          org.acegisecurity.Authentication auth = user.impersonate();
-          List<StandardUsernamePasswordCredentials> allCreds = CredentialsProvider.lookupCredentials(
-              StandardUsernamePasswordCredentials.class,
-              Jenkins.get(),  // Global scope
-              auth,
-              java.util.Collections.emptyList()
-          );
-          for (StandardUsernamePasswordCredentials c : allCreds) {
-            if (effectiveCredentialsId.equals(c.getId())) {
-              creds = c;
-              break;
-            }
-          }
-        }
-      }
-    }
-    
-    // Try 5: Job scope with user authentication (user-scoped job credentials)
-    if (creds == null) {
-      hudson.model.Cause.UserIdCause userIdCause = run.getCause(hudson.model.Cause.UserIdCause.class);
-      if (userIdCause != null) {
-        hudson.model.User user = hudson.model.User.get(userIdCause.getUserId(), false, java.util.Collections.emptyMap());
-        if (user != null) {
-          org.acegisecurity.Authentication auth = user.impersonate();
-          List<StandardUsernamePasswordCredentials> allCreds = CredentialsProvider.lookupCredentials(
-              StandardUsernamePasswordCredentials.class,
-              job,
-              auth,
-              java.util.Collections.emptyList()
-          );
-          for (StandardUsernamePasswordCredentials c : allCreds) {
-            if (effectiveCredentialsId.equals(c.getId())) {
-              creds = c;
-              break;
-            }
-          }
-        }
-      }
-    }
-    
-    if (creds == null) {
-      throw new AbortException("ShiftLeft: Credentials not found: " + effectiveCredentialsId);
+      throw new AbortException("ShiftLeft: Credentials not found, or not readable by this job: "
+          + effectiveCredentialsId
+          + ". The credential must be a username/password credential in a store this job can read"
+          + " (Manage Jenkins > Credentials, or a folder containing the job). Credentials kept in a"
+          + " user's personal store are not available to builds.");
     }
 
     ShiftLeftApiClient client = new ShiftLeftApiClient(serverUrl, tenantId, listener);
@@ -348,6 +287,10 @@ public class ShiftLeftTestPackBuilder extends Builder implements SimpleBuildStep
         Objects.requireNonNullElse(Result.fromString(gateFailureResult), Result.FAILURE);
 
     if (!waitForCompletion) {
+      // Trigger-only runs still get a decision: the shared runner reports TRIGGER_ONLY here and
+      // ci-client/README.md documents it as a gate decision code, so the JSON summary must not
+      // carry a null decision.
+      summary.setDecision("TRIGGER_ONLY");
       attachAndOptionallyWriteArtifacts(run, workspace, listener, summary, null);
       return;
     }
@@ -527,7 +470,7 @@ public class ShiftLeftTestPackBuilder extends Builder implements SimpleBuildStep
     public ListBoxModel doFillCredentialsIdItems(
         @AncestorInPath Item item,
         @QueryParameter String serverUrl) {
-      Jenkins.get().checkPermission(Item.CONFIGURE);
+      checkConfigurePermission(item);
       ListBoxModel m = new StandardListBoxModel().includeEmptyValue();
       String base = sanitizeServerUrl(serverUrl);
       List<StandardUsernamePasswordCredentials> all = lookupUsernamePasswordCredentials(item, base);
@@ -548,13 +491,14 @@ public class ShiftLeftTestPackBuilder extends Builder implements SimpleBuildStep
       return m;
     }
 
+    @RequirePOST
     public ListBoxModel doFillPackIdItems(
         @AncestorInPath Item item,
         @QueryParameter String serverUrl,
         @QueryParameter String tenantId,
         @QueryParameter String credentialsId
     ) {
-      Jenkins.get().checkPermission(Item.CONFIGURE);
+      checkConfigurePermission(item);
       ListBoxModel m = new ListBoxModel();
 
       String base = sanitizeServerUrl(serverUrl);
@@ -599,7 +543,7 @@ public class ShiftLeftTestPackBuilder extends Builder implements SimpleBuildStep
         @QueryParameter String tenantId,
         @QueryParameter String credentialsId
     ) throws IOException, InterruptedException {
-      Jenkins.get().checkPermission(Item.CONFIGURE);
+      checkConfigurePermission(item);
       String base = sanitizeServerUrl(serverUrl);
       if (emptyToNull(base) == null) {
         return FormValidation.error("Server URL is required");
@@ -621,6 +565,22 @@ public class ShiftLeftTestPackBuilder extends Builder implements SimpleBuildStep
       return FormValidation.ok("Login OK");
     }
 
+    /**
+     * An Item permission has to be checked against the item the form belongs to. Checking
+     * Item.CONFIGURE on the Jenkins root instead passes for anyone granted Job/Configure
+     * globally, which is coarser than the job in scope and ignores a folder that narrows it.
+     * With no item in scope -- the form is being rendered outside a job, as on the root-level
+     * pipeline-syntax page -- there is nothing to check an Item permission against, so this
+     * requires overall administration.
+     */
+    private static void checkConfigurePermission(@CheckForNull Item item) {
+      if (item != null) {
+        item.checkPermission(Item.CONFIGURE);
+      } else {
+        Jenkins.get().checkPermission(Jenkins.ADMINISTER);
+      }
+    }
+
     private static List<DomainRequirement> domainRequirementsForServerUrl(String sanitizedBaseUrl) {
       if (emptyToNull(sanitizedBaseUrl) == null) {
         return Collections.emptyList();
@@ -629,24 +589,36 @@ public class ShiftLeftTestPackBuilder extends Builder implements SimpleBuildStep
     }
 
     /**
-     * Resolves username/password credentials visible for this item (job/folder) or Jenkins root,
-     * optionally filtered by server URL host when the URL is set.
+     * Resolves the username/password credentials the job in scope can use, optionally filtered by
+     * the server URL host when the URL is set.
+     *
+     * The lookup is made as the authentication the job itself runs as, not as the user browsing
+     * the form. SystemCredentialsProvider answers an item lookup only for ACL.SYSTEM2, so looking
+     * up as the logged-in user returns nothing at all -- every global credential was missing from
+     * the dropdown, and Test Connection answered "Credentials not found" for a credential the
+     * build then used happily. The user's right to see the list is the Item.CONFIGURE check each
+     * caller makes; this is what StandardListBoxModel.includeMatchingAs does for the same reason.
+     * It also keeps the list to what perform() can resolve: a credential in a user's personal
+     * store is no longer offered, because a build cannot read one.
      */
     private static List<StandardUsernamePasswordCredentials> lookupUsernamePasswordCredentials(
         @CheckForNull Item item,
         String sanitizedBaseUrl) {
       List<DomainRequirement> reqs = domainRequirementsForServerUrl(sanitizedBaseUrl);
       if (item != null) {
-        return CredentialsProvider.lookupCredentials(
+        Authentication asJob = item instanceof Queue.Task
+            ? Tasks.getAuthenticationOf2((Queue.Task) item)
+            : ACL.SYSTEM2;
+        return CredentialsProvider.lookupCredentialsInItem(
             StandardUsernamePasswordCredentials.class,
             item,
-            Jenkins.getAuthentication(),
+            asJob,
             reqs);
       }
-      return CredentialsProvider.lookupCredentials(
+      return CredentialsProvider.lookupCredentialsInItemGroup(
           StandardUsernamePasswordCredentials.class,
           Jenkins.get(),
-          Jenkins.getAuthentication(),
+          ACL.SYSTEM2,
           reqs);
     }
 

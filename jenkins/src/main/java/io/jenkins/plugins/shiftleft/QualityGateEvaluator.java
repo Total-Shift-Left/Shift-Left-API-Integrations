@@ -40,11 +40,8 @@ final class QualityGateEvaluator {
         // Threshold not met - fail regardless of status.
         return new QualityGateDecision("GATE_FAIL_THRESHOLD", gateFail);
       }
-      // Threshold is met - pass (even if status is FAILED, the threshold requirement is satisfied).
-      if ("COMPLETED".equals(normalized) || "FAILED".equals(normalized)) {
-        return new QualityGateDecision("PASSED", Result.SUCCESS);
-      }
-      // Other terminal states with threshold met.
+      // Threshold is met - pass regardless of status (even FAILED: the threshold requirement is
+      // satisfied, which is what the user asked for).
       return new QualityGateDecision("PASSED", Result.SUCCESS);
     }
 

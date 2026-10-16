@@ -56,8 +56,14 @@ final class ShiftLeftApiClient {
     body.put("email", email);
     body.put("password", password);
 
+    // The body carries the password, so it never goes to the build log. Masking the serialized
+    // JSON is not safe to do: a password containing a double quote is escaped as \" in the JSON,
+    // and a regex on "password":"[^"]+" stops at that escape and leaves the tail of the password
+    // in the log -- ab"cd logged as "password":"***"cd". The account is the only part of the body
+    // worth seeing, and it is taken from the field here rather than from the serialized JSON.
+    listener.getLogger().println("[ShiftLeft] Login as: " + email);
+
     String bodyJson = body.toString();
-    listener.getLogger().println("[ShiftLeft] Login request body: " + bodyJson.replaceAll("\"password\":\"[^\"]+\"", "\"password\":\"***\""));
 
     HttpRequest req = baseRequest("/api/v1/login")
         .timeout(Duration.ofSeconds(30))
