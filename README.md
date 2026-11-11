@@ -1,5 +1,7 @@
 # Shift-Left API Integrations
 
+Part of [Shift-Left API](https://totalshiftleft.ai) by Total Shift Left.
+
 Run [Shift-Left Studio](https://totalshiftleft.ai) API test packs from your CI pipeline: trigger a
 test run pack, wait for it, gate the build on its pass rate, and publish JSON + JUnit results.
 
